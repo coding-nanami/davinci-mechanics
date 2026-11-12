@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leonardo's Self-Propelled Cart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap" rel="stylesheet">
+<style>
+  /* One visual world: a page torn from a Renaissance notebook, shown on a dark walnut desk.
+     The stage is the recordable frame; the control bar lives outside it and can be hidden. */
+  :root {
+    --desk: #17110b;
+    --paper: #ecdec1;
+    --ink: #3b2614;
+    --ink-soft: rgba(59, 38, 20, 0.62);
+    --sanguine: #8c3b22;
+    --bar: rgba(23, 17, 11, 0.86);
+    --bar-text: #e9dcc0;
+    --display: "IM Fell English SC", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+    --body: "IM Fell English", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--desk);
+    color: var(--bar-text);
+    font-family: var(--body);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  #stage {
+    position: absolute;
+    overflow: hidden;
+    background: var(--paper);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+    touch-action: none;
+    cursor: grab;
+    --s: 8px;
+  }
+  #stage.dragging { cursor: grabbing; }
+  #gl, #ov { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #ov { pointer-events: none; }
+
+  .title {
+    position: absolute;
+    left: calc(var(--s) * 4.2);
+    top: calc(var(--s) * 3.6);
+    color: var(--ink);
+    pointer-events: none;
+    display: grid;
+    gap: calc(var(--s) * 0.5);
+    max-width: 70%;
+  }
+  .title .mirror {
+    font-family: var(--body);
+    font-style: italic;
+    font-size: calc(var(--s) * 2.4);
+    transform: scaleX(-1);
+    transform-origin: center;
+    justify-self: start;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  .title h1 {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: calc(var(--s) * 4.1);
+    line-height: 1.02;
+    margin: 0;
+    letter-spacing: 0.01em;
+    text-wrap: balance;
+  }
+  .title p {
+    margin: 0;
+    font-style: italic;
+    font-size: calc(var(--s) * 1.85);
+    color: var(--ink-soft);
+  }
+  .caption {
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--s) * 5);
+    transform: translateX(-50%);
+    color: var(--ink);
+    font-family: var(--body);
+    font-style: italic;
+    font-size: calc(var(--s) * 3.0);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    text-align: center;
+  }
+  .caption small {
+    display: block;
+    font-style: normal;
+    font-family: var(--display);
+    font-size: calc(var(--s) * 1.6);
+    letter-spacing: 0.14em;
+    color: var(--sanguine);
+    margin-top: calc(var(--s) * 0.6);
+  }
+  body.no-captions .caption { display: none; }
+  body.ui-over .caption { bottom: calc(var(--s) * 3 + 70px); }
+
+  /* Control bar */
+  #bar {
+    position: fixed;
+    left: 50%;
+    bottom: 14px;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: var(--bar);
+    border: 1px solid rgba(233, 220, 192, 0.14);
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+    font-family: var(--body);
+    font-size: 15px;
+    width: min(760px, calc(100% - 32px));
+    box-sizing: border-box;
+    flex-wrap: wrap;
+    z-index: 5;
+  }
+  body.clean #bar, body.clean #hint { display: none; }
+  #bar button {
+    font: inherit;
+    color: var(--bar-text);
+    background: transparent;
+    border: 1px solid rgba(233, 220, 192, 0.22);
+    border-radius: 7px;
+    padding: 4px 10px;
+    cursor: pointer;
+    line-height: 1.3;
+  }
+  #bar button:hover { background: rgba(233, 220, 192, 0.08); }
+  #bar button[aria-pressed="true"] { background: var(--bar-text); color: var(--desk); border-color: var(--bar-text); }
+  #bar button:focus-visible, #scrub:focus-visible { outline: 2px solid #d9a35a; outline-offset: 2px; }
+  #play { min-width: 74px; }
+  #scrub { flex: 1 1 180px; accent-color: #c98a4a; min-width: 140px; }
+  #time { font-variant-numeric: tabular-nums; min-width: 44px; text-align: right; opacity: 0.8; }
+  .seg { display: flex; gap: 4px; }
+  #hint {
+    position: fixed;
+    top: 12px;
+    right: 16px;
+    font-size: 13px;
+    color: rgba(233, 220, 192, 0.6);
+    font-style: italic;
+    z-index: 5;
+    text-align: right;
+  }
+  @media (max-width: 560px) {
+    #bar { font-size: 14px; gap: 8px; }
+    #hint { display: none; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div id="stage" aria-label="Animated reconstruction of Leonardo da Vinci's self-propelled cart">
+  <canvas id="gl"></canvas>
+  <canvas id="ov"></canvas>
+  <div class="title">
+    <div class="mirror" aria-hidden="true">carro che si move per forza di molle</div>
+    <h1>The Self-Propelled Cart</h1>
+    <p>Leonardo da Vinci · Codex Atlanticus, f. 812r · c. 1478</p>
+  </div>
+  <div class="caption" id="cap"></div>
+</div>
+
+<div id="hint">Drag to rotate · Scroll to zoom · Space to pause · H for clean frame</div>
+
+<div id="bar" role="toolbar" aria-label="Playback">
+  <button id="play" type="button">Pause</button>
+  <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="Timeline">
+  <span id="time">0.0s</span>
+  <div class="seg" role="group" aria-label="Frame">
+    <button type="button" data-ar="full" aria-pressed="true">Full</button>
+    <button type="button" data-ar="9:16" aria-pressed="false">9:16</button>
+    <button type="button" data-ar="1:1" aria-pressed="false">1:1</button>
+    <button type="button" data-ar="16:9" aria-pressed="false">16:9</button>
+  </div>
+  <button id="capBtn" type="button" aria-pressed="true">Captions</button>
+  <button id="cleanBtn" type="button">Clean frame</button>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+
+const DUR = 20;
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const stage = document.getElementById('stage');
+const glCanvas = document.getElementById('gl');
+const ov = document.getElementById('ov');
+const octx = ov.getContext('2d');
+const capEl = document.getElementById('cap');
+
+const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 200);
+
+/* ---------- Shared GLSL: procedural paper, identical for the background and the shaded parts ---------- */
+const PAPER_GLSL = /* glsl */`
+uniform vec2 uRes;
+uniform float uDpr;
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f*f*(3.0-2.0*f);
+  return mix(mix(hash(i), hash(i+vec2(1.0,0.0)), u.x), mix(hash(i+vec2(0.0,1.0)), hash(i+vec2(1.0,1.0)), u.x), u.y);
+}
+float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ v += a*vnoise(p); p *= 2.03; a *= 0.5; } return v; }
+vec3 paper(vec2 fc){
+  vec2 uv = fc / uRes;
+  vec2 p = fc / uRes.y;
+  float n = fbm(p*3.0);
+  float fine = fbm(p*55.0);
+  float fiber = vnoise(vec2(p.x*380.0, p.y*7.0));
+  vec3 col = vec3(0.925, 0.868, 0.752) * (0.93 + 0.10*n) - 0.035*fine + 0.012*fiber;
+  float stain = smoothstep(0.56, 0.78, fbm(p*1.4 + 7.3));
+  col = mix(col, col*vec3(0.86, 0.77, 0.62), stain*0.55);
+  float foxing = smoothstep(0.80, 0.86, fbm(p*9.0 + 2.1));
+  col = mix(col, col*vec3(0.80, 0.66, 0.50), foxing*0.35);
+  float d = distance(uv, vec2(0.5));
+  col *= 1.0 - 0.42*smoothstep(0.32, 0.86, d);
+  return col;
+}`;
+
+const shared = {
+  uRes: { value: new THREE.Vector2(1, 1) },
+  uDpr: { value: 1 },
+  uHatch: { value: 0 },
+  uSolid: { value: 0 },
+};
+
+// Background sheet
+const bgMat = new THREE.ShaderMaterial({
+  uniforms: { uRes: shared.uRes, uDpr: shared.uDpr },
+  vertexShader: `void main(){ gl_Position = vec4(position.xy, 0.9999, 1.0); }`,
+  fragmentShader: PAPER_GLSL + `void main(){ gl_FragColor = vec4(paper(gl_FragCoord.xy), 1.0); }`,
+  depthWrite: false, depthTest: false,
+});
+const bg = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat);
+bg.frustumCulled = false;
+bg.renderOrder = -10;
+scene.add(bg);
+
+// Part surface: invisible paper (but occluding) → pen hatching → tinted wood / brass
+function makeSurface(hex, metal) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uRes: shared.uRes, uDpr: shared.uDpr, uHatch: shared.uHatch, uSolid: shared.uSolid,
+      uColor: { value: new THREE.Color(hex) }, uMetal: { value: metal },
+    },
+    vertexShader: /* glsl */`
+      varying vec3 vN; varying vec3 vObj; varying vec3 vView;
+      void main(){
+        vN = normalize(normalMatrix * normal);
+        vObj = position;
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vView = mv.xyz;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: PAPER_GLSL + /* glsl */`
+      uniform float uHatch, uSolid, uMetal;
+      uniform vec3 uColor;
+      varying vec3 vN; varying vec3 vObj; varying vec3 vView;
+      void main(){
+        vec3 N = normalize(vN);
+        vec3 L = normalize(vec3(-0.45, 0.75, 0.55));
+        float diff = clamp(dot(N, L), 0.0, 1.0);
+        float lam = 0.46 + 0.54*diff;
+        vec3 pap = paper(gl_FragCoord.xy);
+        vec3 ink = vec3(0.23, 0.15, 0.08);
+
+        vec2 fc = gl_FragCoord.xy / uDpr;
+        float wob = vnoise(fc*0.04)*2.0;
+        float s1 = abs(fract((fc.x + fc.y + wob)/5.5) - 0.5);
+        float s2 = abs(fract((fc.x - fc.y + wob)/5.5) - 0.5);
+        float l1 = 1.0 - smoothstep(0.10, 0.22, s1);
+        float l2 = 1.0 - smoothstep(0.10, 0.22, s2);
+        float h = l1*(1.0 - smoothstep(0.50, 0.66, lam)) + l2*(1.0 - smoothstep(0.30, 0.44, lam));
+        h = clamp(h*(0.7 + 0.3*vnoise(fc*0.11)), 0.0, 1.0);
+        vec3 sketch = mix(pap, ink, h*0.62*uHatch);
+
+        float r = length(vObj.xy);
+        float g = fbm(vec2(r*18.0 + vObj.z*0.6, vObj.z*1.4 + r*3.0));
+        vec3 base = uColor * mix(0.80 + 0.34*g, 1.0, uMetal);
+        vec3 V = normalize(-vView);
+        vec3 H = normalize(L + V);
+        float spec = pow(max(dot(N, H), 0.0), 28.0) * uMetal;
+        vec3 lit = base*lam + spec*vec3(1.0, 0.9, 0.7)*0.75;
+        vec3 solid = lit * mix(vec3(1.0), pap/vec3(0.925, 0.868, 0.752), 0.4);
+        solid = mix(solid, ink, h*0.16);
+        gl_FragColor = vec4(mix(sketch, solid, uSolid), 1.0);
+      }`,
+    polygonOffset: true, polygonOffsetFactor: 1.5, polygonOffsetUnits: 2,
+    toneMapped: false,
+  });
+}
+const M = {
+  wood: makeSurface('#cf9f66', 0),
+  dark: makeSurface('#9e6a3f', 0),
+  pale: makeSurface('#dcb47c', 0),
+  brass: makeSurface('#c49a4c', 1),
+  iron: makeSurface('#6f665a', 0.5),
+};
+
+// Ink: fat lines whose "dash" length is hijacked into a draw-on reveal
+const lineMat = new LineMaterial({
+  color: 0x3b2614, linewidth: 1.55, dashed: true, dashScale: 1, dashSize: 0, gapSize: 1e5,
+  transparent: true, opacity: 0.95, worldUnits: false,
+});
+
+/* ---------- Geometry helpers (authored in world coordinates, stored relative to each part's pivot) ---------- */
+const V3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
+function ringGeo(R, r, thick, segs = 56) {
+  const s = new THREE.Shape(); s.absarc(0, 0, R, 0, Math.PI * 2, false);
+  const h = new THREE.Path(); h.absarc(0, 0, r, 0, Math.PI * 2, true); s.holes.push(h);
+  const g = new THREE.ExtrudeGeometry(s, { depth: thick, bevelEnabled: false, curveSegments: segs });
+  g.translate(0, 0, -thick / 2);
+  return g; // axis z
+}
+function orientAxis(g, axis, fromAxis) {
+  if (fromAxis === 'y') { if (axis === 'z') g.rotateX(Math.PI / 2); if (axis === 'x') g.rotateZ(Math.PI / 2); }
+  if (fromAxis === 'z') { if (axis === 'y') g.rotateX(Math.PI / 2); if (axis === 'x') g.rotateY(Math.PI / 2); }
+  return g;
+}
+
+function builder(pivot) {
+  const P = V3(pivot);
+  const meshes = [], polylines = [];
+  const loc = (a) => V3(a).sub(P);
+  const api = {
+    mesh(geo, mat, at, lookAt) {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.copy(loc(at));
+      if (lookAt) m.lookAt(loc(lookAt));
+      meshes.push(m); return m;
+    },
+    beam(a, b, w, h, mat) {
+      const len = V3(a).distanceTo(V3(b));
+      const mid = V3(a).add(V3(b)).multiplyScalar(0.5);
+      return api.mesh(new THREE.BoxGeometry(w, h, len), mat, mid.toArray(), b);
+    },
+    cyl(a, b, r, seg, mat) {
+      const len = V3(a).distanceTo(V3(b));
+      const mid = V3(a).add(V3(b)).multiplyScalar(0.5);
+      const g = new THREE.CylinderGeometry(r, r, len, seg, 1); g.rotateX(Math.PI / 2);
+      return api.mesh(g, mat, mid.toArray(), b);
+    },
+    box(c, size, mat) { return api.mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), mat, c); },
+    disk(c, axis, r, h, seg, mat) { return api.mesh(orientAxis(new THREE.CylinderGeometry(r, r, h, seg, 1), axis, 'y'), mat, c); },
+    ring(c, axis, R, r, t, mat, segs) { return api.mesh(orientAxis(ringGeo(R, r, t, segs), axis, 'z'), mat, c); },
+    tube(points, radius, mat) {
+      const curve = new THREE.CatmullRomCurve3(points.map(loc));
+      const m = new THREE.Mesh(new THREE.TubeGeometry(curve, 28, radius, 5, false), mat);
+      meshes.push(m); return m;
+    },
+    line(points) { polylines.push(points.map(loc)); },
+    circle(c, axis, r, n = 40) {
+      const pts = [];
+      for (let i = 0; i <= n; i++) {
+        const a = (i / n) * Math.PI * 2, u = Math.cos(a) * r, v = Math.sin(a) * r;
+        if (axis === 'y') pts.push([c[0] + u, c[1], c[2] + v]);
+        else if (axis === 'z') pts.push([c[0] + u, c[1] + v, c[2]]);
+        else pts.push([c[0], c[1] + u, c[2] + v]);
+      }
+      api.line(pts);
+    },
+    meshes, polylines,
+  };
+  return api;
+}
+
+// Spoked wheel turning about z
+function wheel(B, c, R, thick, spokes, cleats, mat) {
+  B.ring(c, 'z', R, R - 0.1, thick, mat);
+  B.disk(c, 'z', 0.13, thick * 2.3, 10, M.dark);
+  for (let i = 0; i < spokes; i++) {
+    const a = (i / spokes) * Math.PI * 2 + 0.2;
+    B.beam([c[0] + Math.cos(a) * 0.12, c[1] + Math.sin(a) * 0.12, c[2]],
+           [c[0] + Math.cos(a) * (R - 0.09), c[1] + Math.sin(a) * (R - 0.09), c[2]], 0.055, 0.055, mat);
+  }
+  for (let i = 0; i < cleats; i++) {
+    const a = (i / cleats) * Math.PI * 2;
+    B.beam([c[0] + Math.cos(a) * (R - 0.02), c[1] + Math.sin(a) * (R - 0.02), c[2]],
+           [c[0] + Math.cos(a) * (R + 0.055), c[1] + Math.sin(a) * (R + 0.055), c[2]], thick * 0.8, thick * 0.8, M.dark);
+  }
+}
+
+/* ---------- The cart: 20 parts ---------- */
+const FY = 1.1; // frame beam centre height
+const defs = [
+  { id: 'frame', pivot: [0, FY, 0], explode: [0, -0.15, 0], label: 'telaio', en: 'frame', anchor: [1.0, 0, -1.15],
+    build(B) {
+      const t = 0.16, x0 = -1.6, x1 = 1.0, z = 1.15;
+      B.beam([x0, FY, -z], [x1, FY, -z], t, t, M.wood);
+      B.beam([x0, FY, z], [x1, FY, z], t, t, M.wood);
+      B.beam([x0, FY, -z - 0.08], [x0, FY, z + 0.08], t, t, M.wood);
+      B.beam([x1, FY, -z - 0.08], [x1, FY, z + 0.08], t, t, M.wood);
+      B.beam([x1, FY, -z], [1.6, FY, -0.22], t, t, M.wood);
+      B.beam([x1, FY, z], [1.6, FY, 0.22], t, t, M.wood);
+      B.box([1.6, FY, 0], [0.34, 0.2, 0.56], M.dark);
+      B.beam([-0.45, FY, -z], [-0.45, FY, z], t * 0.9, t * 0.9, M.wood);
+      B.beam([0.5, FY, -z], [0.5, FY, z], t * 0.9, t * 0.9, M.wood);
+      B.box([-1.2, 0.93, -z], [0.24, 0.28, 0.17], M.dark);
+      B.box([-1.2, 0.93, z], [0.24, 0.28, 0.17], M.dark);
+    } },
+  { id: 'wheelL', pivot: [-1.2, 0.8, -1.38], explode: [0, -0.25, -1.55], spin: 'wheel', label: 'ruota', en: 'drive wheel', anchor: [0, 0.8, 0],
+    build(B) { wheel(B, [-1.2, 0.8, -1.38], 0.8, 0.12, 8, 18, M.wood); } },
+  { id: 'wheelR', pivot: [-1.2, 0.8, 1.38], explode: [0, -0.25, 1.55], spin: 'wheel',
+    build(B) { wheel(B, [-1.2, 0.8, 1.38], 0.8, 0.12, 8, 18, M.wood); } },
+  { id: 'axle', pivot: [-1.2, 0.8, 0], explode: [0, -1.15, 0], spin: 'wheel', label: 'asse', en: 'axle', anchor: [0, 0, -0.9],
+    build(B) { B.cyl([-1.2, 0.8, -1.56], [-1.2, 0.8, 1.56], 0.06, 8, M.dark); } },
+  { id: 'front', pivot: [1.6, 0.42, 0], explode: [1.35, -0.2, 0], spin: 'front', steer: true,
+    build(B) { wheel(B, [1.6, 0.42, 0], 0.42, 0.09, 6, 12, M.wood); } },
+  { id: 'fork', pivot: [1.6, 1.3, 0], explode: [0.95, 0.6, 0], steer: true, label: 'timone', en: 'steering', anchor: [0, 0.6, 0],
+    build(B) {
+      B.cyl([1.6, 0.98, 0], [1.6, 1.95, 0], 0.06, 8, M.dark);
+      B.beam([1.6, 0.98, -0.2], [1.6, 0.98, 0.2], 0.1, 0.08, M.wood);
+      B.beam([1.6, 0.98, -0.17], [1.6, 0.42, -0.17], 0.06, 0.06, M.wood);
+      B.beam([1.6, 0.98, 0.17], [1.6, 0.42, 0.17], 0.06, 0.06, M.wood);
+      B.cyl([1.6, 0.42, -0.22], [1.6, 0.42, 0.22], 0.03, 8, M.iron);
+    } },
+  { id: 'pinionL', pivot: [-1.2, 0.8, -0.62], explode: [0, -0.55, -0.2], spin: 'wheel',
+    build(B) { pinion(B, [-1.2, 0.8, -0.62]); } },
+  { id: 'pinionR', pivot: [-1.2, 0.8, 0.62], explode: [0, -0.55, 0.2], spin: 'wheel', label: 'rocchetto', en: 'lantern pinion', anchor: [0, -0.28, 0],
+    build(B) { pinion(B, [-1.2, 0.8, 0.62]); } },
+  { id: 'gearL', pivot: [-0.45, 1.36, -0.62], explode: [0, 0.95, -0.28], spin: 'gear', label: 'ruota dentata', en: 'crown gear', anchor: [-0.6, 0, 0],
+    build(B) { crown(B, [-0.45, 1.36, -0.62]); } },
+  { id: 'gearR', pivot: [-0.45, 1.36, 0.62], explode: [0, 0.95, 0.28], spin: 'gear',
+    build(B) { crown(B, [-0.45, 1.36, 0.62]); } },
+  { id: 'drumL', pivot: [-0.45, 1.78, -0.62], explode: [0, 1.95, -0.5], spin: 'gear',
+    build(B) { drum(B, [-0.45, 1.78, -0.62]); } },
+  { id: 'drumR', pivot: [-0.45, 1.78, 0.62], explode: [0, 1.95, 0.5], spin: 'gear', label: 'molla', en: 'coiled spring', anchor: [0, 0.2, 0.34],
+    build(B) { drum(B, [-0.45, 1.78, 0.62]); } },
+  { id: 'shaftL', pivot: [-0.45, 1.8, -0.62], explode: [0, 2.85, -0.1], spin: 'gear',
+    build(B) { B.cyl([-0.45, 1.18, -0.62], [-0.45, 2.42, -0.62], 0.05, 8, M.dark); } },
+  { id: 'shaftR', pivot: [-0.45, 1.8, 0.62], explode: [0, 2.85, 0.1], spin: 'gear',
+    build(B) { B.cyl([-0.45, 1.18, 0.62], [-0.45, 2.42, 0.62], 0.05, 8, M.dark); } },
+  { id: 'gantry', pivot: [-0.45, 1.85, 0], explode: [0, 3.45, 0], 
+    build(B) {
+      const t = 0.14;
+      B.beam([-0.45, 2.48, -1.23], [-0.45, 2.48, 1.23], t, t, M.wood);
+      B.beam([-0.45, 1.18, -1.15], [-0.45, 2.55, -1.15], t, t, M.wood);
+      B.beam([-0.45, 1.18, 1.15], [-0.45, 2.55, 1.15], t, t, M.wood);
+      B.beam([-0.95, 1.18, -1.15], [-0.45, 1.95, -1.15], 0.08, 0.08, M.wood);
+      B.beam([-0.95, 1.18, 1.15], [-0.45, 1.95, 1.15], 0.08, 0.08, M.wood);
+      B.beam([0.05, 1.18, -1.15], [-0.45, 1.95, -1.15], 0.08, 0.08, M.wood);
+      B.beam([0.05, 1.18, 1.15], [-0.45, 1.95, 1.15], 0.08, 0.08, M.wood);
+    } },
+  { id: 'bowL', pivot: [0.5, 1.32, -1.3], explode: [0.25, 0.45, -1.45], label: 'balestra', en: 'leaf spring', anchor: [0, 0, -0.2],
+    build(B) { bow(B, -1); } },
+  { id: 'bowR', pivot: [0.5, 1.32, 1.3], explode: [0.25, 0.45, 1.45],
+    build(B) { bow(B, 1); } },
+  { id: 'post', pivot: [0.5, 1.8, 0], explode: [0.45, 1.05, 0],
+    build(B) {
+      B.beam([0.5, 1.18, 0], [0.5, 2.55, 0], 0.12, 0.12, M.wood);
+      B.box([0.5, 1.26, 0], [0.3, 0.12, 0.3], M.dark);
+    } },
+  { id: 'balance', pivot: [0.5, 2.62, 0], explode: [0.5, 2.55, 0], swing: true, label: 'bilanciere', en: 'balance', anchor: [0, 0, 0.95],
+    build(B) {
+      B.beam([0.5, 2.62, -0.95], [0.5, 2.62, 0.95], 0.08, 0.08, M.wood);
+      B.disk([0.5, 2.62, -0.95], 'y', 0.14, 0.22, 10, M.brass);
+      B.disk([0.5, 2.62, 0.95], 'y', 0.14, 0.22, 10, M.brass);
+      B.disk([0.5, 2.62, 0], 'y', 0.09, 0.16, 10, M.iron);
+    } },
+  { id: 'cam', pivot: [1.6, 2.0, 0], explode: [1.05, 1.75, 0], spin: 'cam', label: 'camma', en: 'steering cam', anchor: [0.3, 0, 0],
+    build(B) {
+      B.disk([1.6, 2.0, 0], 'y', 0.33, 0.06, 36, M.pale);
+      [0.2, 1.1, 1.5, 2.6, 3.9, 4.4].forEach((a) => {
+        B.beam([1.6 + Math.cos(a) * 0.25, 2.03, Math.sin(a) * 0.25], [1.6 + Math.cos(a) * 0.25, 2.15, Math.sin(a) * 0.25], 0.05, 0.05, M.dark);
+      });
+      B.circle([1.6, 2.031, 0], 'y', 0.18, 36);
+    } },
+];
+
+function pinion(B, c) {
+  B.disk([c[0], c[1], c[2] - 0.09], 'z', 0.29, 0.04, 28, M.pale);
+  B.disk([c[0], c[1], c[2] + 0.09], 'z', 0.29, 0.04, 28, M.pale);
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    const x = c[0] + Math.cos(a) * 0.23, y = c[1] + Math.sin(a) * 0.23;
+    B.cyl([x, y, c[2] - 0.09], [x, y, c[2] + 0.09], 0.022, 6, M.dark);
+  }
+}
+function crown(B, c) {
+  B.ring(c, 'y', 0.6, 0.5, 0.09, M.pale);
+  B.disk(c, 'y', 0.11, 0.14, 12, M.dark);
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + 0.4;
+    B.beam([c[0] + Math.cos(a) * 0.1, c[1], c[2] + Math.sin(a) * 0.1], [c[0] + Math.cos(a) * 0.51, c[1], c[2] + Math.sin(a) * 0.51], 0.06, 0.05, M.wood);
+  }
+  for (let i = 0; i < 20; i++) {
+    const a = (i / 20) * Math.PI * 2;
+    const x = c[0] + Math.cos(a) * 0.55, z = c[2] + Math.sin(a) * 0.55;
+    B.cyl([x, c[1] - 0.04, z], [x, c[1] - 0.29, z], 0.026, 6, M.dark);
+  }
+}
+function drum(B, c) {
+  B.disk(c, 'y', 0.34, 0.4, 40, M.brass);
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    B.line([[c[0] + Math.cos(a) * 0.342, c[1] - 0.2, c[2] + Math.sin(a) * 0.342], [c[0] + Math.cos(a) * 0.342, c[1] + 0.2, c[2] + Math.sin(a) * 0.342]]);
+  }
+  B.circle([c[0], c[1] + 0.11, c[2]], 'y', 0.346, 44);
+  B.circle([c[0], c[1] - 0.11, c[2]], 'y', 0.346, 44);
+  const sp = [];
+  for (let i = 0; i <= 160; i++) {
+    const k = i / 160, a = k * Math.PI * 2 * 4.2, r = 0.05 + 0.25 * k;
+    sp.push([c[0] + Math.cos(a) * r, c[1] + 0.203, c[2] + Math.sin(a) * r]);
+  }
+  B.line(sp);
+}
+function bow(B, side) {
+  const y = 1.32, zA = side * 1.1, zM = side * 1.52;
+  const pts = [[1.08, y, zA], [0.8, y, side * 1.38], [0.5, y, zM], [0.2, y, side * 1.38], [-0.08, y, zA]];
+  B.tube(pts, 0.045, M.dark);
+  B.box([1.08, y - 0.08, zA], [0.16, 0.16, 0.16], M.wood);
+  B.box([-0.08, y - 0.08, zA], [0.16, 0.16, 0.16], M.wood);
+  B.line([[1.06, y, side * 1.12], [0.5, y, side * 1.2], [-0.06, y, side * 1.12]]);
+}
+
+/* ---------- Build parts: meshes + ink edges with reveal timing ---------- */
+const parts = [];
+const STAGGER = 0.17;
+defs.forEach((d, idx) => {
+  const B = builder(d.pivot);
+  d.build(B);
+  const group = new THREE.Group();
+  const surf = new THREE.Group();
+  B.meshes.forEach((m) => surf.add(m));
+  group.add(surf);
+
+  // Collect edge segments in pivot-local space
+  const segs = [];
+  B.meshes.forEach((m) => {
+    m.updateMatrix();
+    const eg = new THREE.EdgesGeometry(m.geometry, 24);
+    const a = eg.attributes.position;
+    for (let i = 0; i < a.count; i += 2) {
+      segs.push([new THREE.Vector3().fromBufferAttribute(a, i).applyMatrix4(m.matrix),
+                 new THREE.Vector3().fromBufferAttribute(a, i + 1).applyMatrix4(m.matrix)]);
+    }
+    eg.dispose();
+  });
+  B.polylines.forEach((pl) => { for (let i = 0; i < pl.length - 1; i++) segs.push([pl[i].clone(), pl[i + 1].clone()]); });
+
+  // Draftsman's overshoot on long straight strokes
+  segs.forEach((s) => {
+    const len = s[0].distanceTo(s[1]);
+    if (len > 0.18) {
+      const dir = s[1].clone().sub(s[0]).normalize().multiplyScalar(Math.min(0.045, len * 0.05));
+      s[0].sub(dir); s[1].add(dir);
+    }
+  });
+
+  const total = segs.reduce((acc, s) => acc + s[0].distanceTo(s[1]), 0);
+  const start = idx * STAGGER;
+  const dur = 1.0 + Math.min(1.25, total * 0.055);
+  const pos = new Float32Array(segs.length * 6);
+  const dist = new Float32Array(segs.length * 2);
+  let cum = 0;
+  segs.forEach((s, i) => {
+    pos.set([s[0].x, s[0].y, s[0].z, s[1].x, s[1].y, s[1].z], i * 6);
+    const l = s[0].distanceTo(s[1]);
+    dist[i * 2] = start + (cum / total) * dur;
+    cum += l;
+    dist[i * 2 + 1] = start + (cum / total) * dur;
+  });
+  const lg = new LineSegmentsGeometry();
+  lg.setPositions(pos);
+  const ib = new THREE.InstancedInterleavedBuffer(dist, 2, 1);
+  lg.setAttribute('instanceDistanceStart', new THREE.InterleavedBufferAttribute(ib, 1, 0));
+  lg.setAttribute('instanceDistanceEnd', new THREE.InterleavedBufferAttribute(ib, 1, 1));
+  const ln = new LineSegments2(lg, lineMat);
+  ln.renderOrder = 2;
+  group.add(ln);
+
+  group.position.fromArray(d.pivot);
+  scene.add(group);
+
+  const tiltAxis = new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize();
+  parts.push({
+    ...d, group, surf, start, end: start + dur,
+    base: V3(d.pivot), off: V3(d.explode),
+    delay: Math.min(0.4, (Math.abs(d.explode[1]) + Math.abs(d.explode[2]) * 0.6) * 0.09),
+    tiltAxis, tiltAmt: d.id === 'frame' ? 0 : 0.12 + Math.random() * 0.16,
+    anchorV: d.anchor ? V3(d.anchor) : new THREE.Vector3(),
+  });
+});
+const MAXT = Math.max(...parts.map((p) => p.end)) + 0.01;
+
+/* ---------- Timeline ---------- */
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ss = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+const eio = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+
+function revealAt(T) {
+  if (T < 0.3) return 0;
+  if (T < 5.3) return ((T - 0.3) / 5.0) * MAXT;
+  if (T < 18.9) return MAXT + 1;
+  return MAXT * (1 - ss(18.9, 19.8, T));
+}
+function explodeAt(T) {
+  if (T < 8.0) return 0;
+  if (T < 10.0) return (T - 8.0) / 2.0;
+  if (T < 11.6) return 1;
+  if (T < 13.2) return 1 - (T - 11.6) / 1.6;
+  return 0;
+}
+const run = (T) => ss(13.0, 13.9, T) * (1 - ss(16.9, 17.6, T));
+function runPhase(T) { // integral of run() — deterministic for scrubbing
+  let p = 0; const end = Math.min(T, 17.6);
+  for (let t = 13.0; t < end; t += 0.02) p += run(t) * Math.min(0.02, end - t);
+  return p;
+}
+const CAPTIONS = [
+  { a: 0.7, b: 5.6, text: 'Sketched by Leonardo, around 1478', sub: 'CODEX ATLANTICUS · FOLIO 812 RECTO' },
+  { a: 6.2, b: 7.9, text: 'Built from the drawing', sub: 'WOOD · IRON · BRASS' },
+  { a: 8.6, b: 12.4, text: 'Twenty parts, exploded', sub: 'HE DREW EXPLODED VIEWS 500 YEARS AGO' },
+  { a: 13.4, b: 17.4, text: 'Spring-powered. No horse.', sub: 'COILED SPRINGS → CROWN GEARS → AXLE' },
+];
+
+/* ---------- Camera fit ---------- */
+const fitA = { c: new THREE.Vector3(), r: 1 }, fitE = { c: new THREE.Vector3(), r: 1 };
+function layout(e, T) {
+  const ph = runPhase(T);
+  const rr = run(T);
+  parts.forEach((p) => {
+    const ei = eio(clamp((e * 1.4 - p.delay) / 1.0));
+    p.group.position.copy(p.base).addScaledVector(p.off, ei);
+    const q = new THREE.Quaternion().setFromAxisAngle(p.tiltAxis, p.tiltAmt * ei);
+    const op = new THREE.Euler(0, 0, 0, 'YXZ');
+    if (p.spin === 'wheel') op.z = -ph * 2.3;
+    if (p.spin === 'front') op.z = -ph * 4.4;
+    if (p.spin === 'gear') op.y = ph * 1.05;
+    if (p.spin === 'cam') op.y = ph * 0.35;
+    if (p.steer) op.y += 0.16 * Math.sin(ph * 0.35 * 3) * rr;
+    if (p.swing) op.y = 0.55 * Math.sin(ph * 3.2) * rr;
+    q.multiply(new THREE.Quaternion().setFromEuler(op));
+    p.group.quaternion.copy(q);
+  });
+}
+function measure(e, out) {
+  layout(e, 0);
+  const box = new THREE.Box3();
+  parts.forEach((p) => p.group.updateMatrixWorld(true));
+  parts.forEach((p) => box.expandByObject(p.surf, true));
+  const s = box.getBoundingSphere(new THREE.Sphere());
+  out.c.copy(s.center); out.r = s.radius * (e > 0.5 ? 0.98 : 0.86);
+}
+measure(0, fitA);
+measure(1, fitE);
+
+let userAz = 0, userEl = 0, userZoom = 1;
+function placeCamera(T, eG) {
+  const ph = (2 * Math.PI * T) / DUR;
+  const az = (reduceMotion ? 0.75 : 0.75 + ph - 0.8 * Math.sin(ph)) + userAz;
+  const el = clamp(0.36 + (reduceMotion ? 0 : 0.07 * Math.sin(ph * 2)) + userEl, -0.2, 1.35);
+  const tgt = fitA.c.clone().lerp(fitE.c, eG);
+  const R = THREE.MathUtils.lerp(fitA.r, fitE.r, eG);
+  const vf = THREE.MathUtils.degToRad(camera.fov) / 2;
+  const hf = Math.atan(Math.tan(vf) * camera.aspect);
+  const dist = (R / Math.sin(Math.min(vf, hf))) * userZoom;
+  camera.position.set(tgt.x + dist * Math.cos(el) * Math.cos(az), tgt.y + dist * Math.sin(el), tgt.z + dist * Math.cos(el) * Math.sin(az));
+  camera.lookAt(tgt);
+}
+
+/* ---------- Overlay: mirror-script notes and part labels ---------- */
+const NOTES = [
+  'questa carretta si move per forza di molle',
+  'e la molla tira la rota dentata',
+  'la quale volta il rocchetto e l asse',
+  'el bilanciere tempera il moto',
+];
+const tmp = new THREE.Vector3();
+function drawOverlay(T, eG) {
+  const w = ov.width, h = ov.height, dpr = shared.uDpr.value, s = Math.min(w, h) / 100;
+  octx.clearRect(0, 0, w, h);
+  const ink = 'rgba(59,38,20,';
+
+  // margin notes in mirror script
+  const na = 0.30 * ss(0.4, 2.6, T) * (1 - ss(18.6, 19.6, T));
+  if (na > 0.001) {
+    octx.save();
+    octx.font = `italic ${2.3 * s}px "IM Fell English", Palatino, Georgia, serif`;
+    octx.fillStyle = ink + na + ')';
+    octx.textAlign = 'right';
+    const rightX = w - 5 * s;
+    NOTES.forEach((t, i) => {
+      octx.save();
+      octx.translate(rightX, h * 0.2 + i * 3.4 * s);
+      octx.rotate(-0.025);
+      octx.scale(-1, 1);
+      octx.textAlign = 'left';
+      octx.fillText(t, 0, 0);
+      octx.restore();
+    });
+    octx.restore();
+  }
+
+  // labels
+  const la = ss(0.55, 0.95, eG);
+  if (la < 0.001) return;
+  const cx = w / 2, cy = h / 2;
+  parts.forEach((p, i) => {
+    if (!p.label) return;
+    const a = la * ss(0, 1, (eG - 0.55 - (i % 5) * 0.02) / 0.3 + 0.0001);
+    if (a < 0.01) return;
+    tmp.copy(p.anchorV).applyQuaternion(p.group.quaternion).add(p.group.position).project(camera);
+    if (tmp.z > 1) return;
+    const x = (tmp.x * 0.5 + 0.5) * w, y = (-tmp.y * 0.5 + 0.5) * h;
+    let dx = x - cx, dy = y - cy; const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+    const L = 7 * s;
+    const lx = x + Math.sign(dx || 1) * L, ly = y + dy * 2.5 * s;
+    octx.save();
+    octx.globalAlpha = a;
+    octx.strokeStyle = ink + '0.85)';
+    octx.lineWidth = 1.1 * dpr;
+    octx.beginPath(); octx.arc(x, y, 0.45 * s, 0, Math.PI * 2); octx.stroke();
+    octx.beginPath(); octx.moveTo(x + dx * 0.6 * s, y + dy * 0.6 * s); octx.lineTo(lx, ly); octx.stroke();
+    const right = (dx || 1) >= 0;
+    // mirror-written Italian name
+    octx.font = `italic ${2.5 * s}px "IM Fell English", Palatino, Georgia, serif`;
+    const tw = octx.measureText(p.label).width;
+    octx.fillStyle = ink + '0.95)';
+    octx.save();
+    const tx = right ? lx + 0.8 * s : lx - 0.8 * s - tw;
+    octx.translate(tx + tw, ly - 0.2 * s);
+    octx.scale(-1, 1);
+    octx.textAlign = 'left';
+    octx.fillText(p.label, 0, 0);
+    octx.restore();
+    // plain-language gloss
+    octx.font = `${1.45 * s}px "IM Fell English SC", Palatino, Georgia, serif`;
+    octx.fillStyle = 'rgba(140,59,34,0.95)';
+    octx.textAlign = right ? 'left' : 'right';
+    octx.fillText(p.en.toUpperCase(), right ? lx + 0.8 * s : lx - 0.8 * s, ly + 1.9 * s);
+    octx.restore();
+  });
+}
+
+/* ---------- Frame / resize ---------- */
+let aspectMode = 'full';
+function resize() {
+  const W = window.innerWidth, H = window.innerHeight;
+  let w = W, h = H, l = 0, t = 0;
+  if (aspectMode !== 'full') {
+    const [aw, ah] = aspectMode.split(':').map(Number);
+    const clean = document.body.classList.contains('clean');
+    const availW = W - 32, availH = H - (clean ? 32 : 96);
+    const k = Math.min(availW / aw, availH / ah);
+    w = Math.floor(aw * k); h = Math.floor(ah * k);
+    l = Math.floor((W - w) / 2); t = Math.floor((availH - h) / 2) + 16;
+  }
+  Object.assign(stage.style, { left: l + 'px', top: t + 'px', width: w + 'px', height: h + 'px' });
+  stage.style.setProperty('--s', (Math.min(w, h) / 100) + 'px');
+  document.body.classList.toggle('ui-over', aspectMode === 'full' && !document.body.classList.contains('clean'));
+  renderer.setSize(w, h, false);
+  const dpr = renderer.getPixelRatio();
+  shared.uRes.value.set(w * dpr, h * dpr);
+  shared.uDpr.value = dpr;
+  lineMat.resolution.set(w, h);
+  lineMat.linewidth = Math.max(1.2, Math.min(w, h) / 560);
+  ov.width = Math.round(w * dpr); ov.height = Math.round(h * dpr);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+/* ---------- Render ---------- */
+let T = 0, playing = true, last = performance.now();
+function renderAt(T) {
+  const reveal = revealAt(T);
+  lineMat.dashSize = Math.max(0.00001, reveal);
+  shared.uHatch.value = ss(5.2, 6.4, T) * (1 - ss(18.0, 18.9, T));
+  shared.uSolid.value = ss(6.4, 7.8, T) * (1 - ss(17.6, 18.5, T));
+  lineMat.opacity = 0.95 - 0.12 * shared.uSolid.value;
+  parts.forEach((p) => { p.surf.visible = reveal > p.start + (p.end - p.start) * 0.45; });
+
+  const e = explodeAt(T);
+  layout(e, T);
+  const eG = eio(e);
+  placeCamera(T, eG);
+  renderer.render(scene, camera);
+  drawOverlay(T, eG);
+
+  let html = '', op = 0;
+  for (const c of CAPTIONS) {
+    if (T >= c.a - 0.5 && T <= c.b + 0.5) { op = ss(c.a - 0.5, c.a, T) * (1 - ss(c.b, c.b + 0.5, T)); html = `${c.text}<small>${c.sub}</small>`; }
+  }
+  if (capEl.innerHTML !== html) capEl.innerHTML = html;
+  capEl.style.opacity = op.toFixed(3);
+}
+
+const scrub = document.getElementById('scrub');
+const timeEl = document.getElementById('time');
+const playBtn = document.getElementById('play');
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (playing) T = (T + dt) % DUR;
+  renderAt(T);
+  if (!scrubbing) scrub.value = Math.round((T / DUR) * 1000);
+  timeEl.textContent = T.toFixed(1) + 's';
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Interaction ---------- */
+let dragging = false, px = 0, py = 0, scrubbing = false;
+stage.addEventListener('pointerdown', (ev) => { dragging = true; px = ev.clientX; py = ev.clientY; stage.setPointerCapture(ev.pointerId); stage.classList.add('dragging'); });
+stage.addEventListener('pointermove', (ev) => {
+  if (!dragging) return;
+  userAz += (ev.clientX - px) * 0.008;
+  userEl = clamp(userEl + (ev.clientY - py) * 0.005, -0.55, 0.95);
+  px = ev.clientX; py = ev.clientY;
+});
+const endDrag = () => { dragging = false; stage.classList.remove('dragging'); };
+stage.addEventListener('pointerup', endDrag);
+stage.addEventListener('pointercancel', endDrag);
+stage.addEventListener('dblclick', () => { userAz = 0; userEl = 0; userZoom = 1; });
+stage.addEventListener('wheel', (ev) => { ev.preventDefault(); userZoom = clamp(userZoom * Math.exp(ev.deltaY * 0.001), 0.55, 1.8); }, { passive: false });
+
+function setPlaying(v) { playing = v; playBtn.textContent = v ? 'Pause' : 'Play'; }
+playBtn.addEventListener('click', () => setPlaying(!playing));
+scrub.addEventListener('input', () => { scrubbing = true; T = (scrub.value / 1000) * DUR * 0.9999; setPlaying(false); });
+scrub.addEventListener('change', () => { scrubbing = false; });
+
+document.querySelectorAll('[data-ar]').forEach((b) => b.addEventListener('click', () => {
+  aspectMode = b.dataset.ar;
+  document.querySelectorAll('[data-ar]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+  resize();
+}));
+const capBtn = document.getElementById('capBtn');
+capBtn.addEventListener('click', () => {
+  const off = document.body.classList.toggle('no-captions');
+  capBtn.setAttribute('aria-pressed', String(!off));
+});
+function toggleClean() { document.body.classList.toggle('clean'); resize(); }
+document.getElementById('cleanBtn').addEventListener('click', toggleClean);
+window.addEventListener('keydown', (ev) => {
+  if (ev.target === scrub && ev.key !== ' ') return;
+  if (ev.key === ' ') { ev.preventDefault(); setPlaying(!playing); }
+  else if (ev.key === 'h' || ev.key === 'H') toggleClean();
+  else if (ev.key === 'c' || ev.key === 'C') capBtn.click();
+  else if (ev.key === 'ArrowRight') { T = (T + 0.5) % DUR; }
+  else if (ev.key === 'ArrowLeft') { T = (T - 0.5 + DUR) % DUR; }
+});
+
+// Open on the finished drawing at rest when motion is reduced; otherwise play from the blank page.
+if (reduceMotion) { T = 9.6; setPlaying(false); }
+window.__seek = (t) => { T = t; setPlaying(false); renderAt(T); };
+resize();
+document.fonts && document.fonts.ready.then(() => renderAt(T));
+requestAnimationFrame((n) => { last = n; frame(n); });
+</script>
+</body>
+</html>

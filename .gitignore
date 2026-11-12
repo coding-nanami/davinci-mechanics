@@ -1,0 +1,8 @@
+# system
+.DS_Store
+Thumbs.db
+# tooling
+node_modules/
+.vercel/
+.env*
+*.log

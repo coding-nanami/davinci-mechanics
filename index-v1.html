@@ -1,0 +1,1713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Da Vinci's Living Codex</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap" rel="stylesheet">
+<style>
+  /* One visual world: a page torn from a Renaissance notebook, shown on a dark walnut desk.
+     The stage is the recordable frame; every control lives outside it (or floats over it) and can be hidden. */
+  :root {
+    --desk: #17110b;
+    --paper: #ecdec1;
+    --ink: #3b2614;
+    --ink-soft: rgba(59, 38, 20, 0.62);
+    --sanguine: #8c3b22;
+    --bar: rgba(23, 17, 11, 0.88);
+    --bar-text: #e9dcc0;
+    --brass: #c9994a;
+    --display: "IM Fell English SC", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+    --body: "IM Fell English", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
+    --toph: 0px; --barh: 0px;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--desk);
+    color: var(--bar-text);
+    font-family: var(--body);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  button { font: inherit; }
+  #stage {
+    position: absolute;
+    overflow: hidden;
+    background: var(--paper);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+    touch-action: none;
+    cursor: grab;
+    --s: 8px;
+  }
+  #stage.dragging { cursor: grabbing; }
+  #stage.pickable { cursor: pointer; }
+  #gl, #ov { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  #ov { pointer-events: none; }
+
+  .title {
+    position: absolute;
+    left: calc(var(--s) * 4.2);
+    top: calc(var(--s) * 3.6);
+    color: var(--ink);
+    pointer-events: none;
+    display: grid;
+    gap: calc(var(--s) * 0.5);
+    max-width: 70%;
+  }
+  body.ui-over .title { top: calc(var(--s) * 2 + var(--toph)); }
+  .title .mirror {
+    font-family: var(--body);
+    font-style: italic;
+    font-size: calc(var(--s) * 2.4);
+    transform: scaleX(-1);
+    transform-origin: center;
+    justify-self: start;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  .title h1 {
+    font-family: var(--display);
+    font-weight: 400;
+    font-size: calc(var(--s) * 4.1);
+    line-height: 1.02;
+    margin: 0;
+    letter-spacing: 0.01em;
+    text-wrap: balance;
+  }
+  .title p {
+    margin: 0;
+    font-style: italic;
+    font-size: calc(var(--s) * 1.85);
+    color: var(--ink-soft);
+  }
+  .caption {
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--s) * 5);
+    transform: translateX(-50%);
+    color: var(--ink);
+    font-family: var(--body);
+    font-style: italic;
+    font-size: calc(var(--s) * 3.0);
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    text-align: center;
+  }
+  .caption small {
+    display: block;
+    font-style: normal;
+    font-family: var(--display);
+    font-size: calc(var(--s) * 1.6);
+    letter-spacing: 0.14em;
+    color: var(--sanguine);
+    margin-top: calc(var(--s) * 0.6);
+  }
+  body.no-captions .caption { display: none; }
+  body.ui-over .caption { bottom: calc(var(--s) * 3 + var(--barh)); }
+
+  /* Parchment tooltip for click-to-inspect */
+  #tip {
+    position: absolute;
+    left: 0; top: 0;
+    width: min(300px, 62%);
+    box-sizing: border-box;
+    padding: 12px 14px 12px;
+    background: linear-gradient(170deg, #f4e8cb, #e6d3a8);
+    color: var(--ink);
+    border: 1px solid rgba(59, 38, 20, 0.45);
+    box-shadow: 0 10px 28px rgba(40, 24, 8, 0.35), inset 0 0 22px rgba(140, 100, 50, 0.18);
+    border-radius: 3px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.25s;
+    font-size: 15px;
+    line-height: 1.32;
+    z-index: 3;
+  }
+  #tip.on { opacity: 1; }
+  #tip b { display: block; font-family: var(--display); font-weight: 400; letter-spacing: 0.1em; font-size: 15px; color: var(--sanguine); }
+  #tip i { display: inline-block; font-size: 17px; color: var(--ink-soft); margin: 1px 0 5px; }
+  #tip p { margin: 0 0 4px; }
+  #toast {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    background: linear-gradient(170deg, #f4e8cb, #e6d3a8); color: var(--ink);
+    border: 1px solid rgba(59, 38, 20, 0.45); border-radius: 3px;
+    padding: 12px 18px; font-size: 16px; font-style: italic; text-align: center;
+    box-shadow: 0 10px 28px rgba(40, 24, 8, 0.35);
+    opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 4; max-width: 80%;
+  }
+  #toast.on { opacity: 1; }
+
+  /* Top bar: machine tabs, mirror, sound, mode */
+  #top {
+    position: fixed; top: 10px; left: 12px; right: 12px;
+    display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap;
+    z-index: 6; pointer-events: none; font-size: 15px;
+  }
+  #top > * { pointer-events: auto; }
+  .tabs, .tools { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .tools { justify-content: flex-end; margin-left: auto; }
+  .ui button {
+    color: var(--bar-text);
+    background: var(--bar);
+    border: 1px solid rgba(233, 220, 192, 0.24);
+    border-radius: 7px;
+    padding: 5px 11px;
+    cursor: pointer;
+    line-height: 1.3;
+    backdrop-filter: blur(8px);
+  }
+  .ui button:hover { background: rgba(60, 44, 28, 0.95); }
+  .ui button[aria-pressed="true"] { background: var(--bar-text); color: var(--desk); border-color: var(--bar-text); }
+  .ui button:focus-visible, .ui input:focus-visible, #crank:focus-visible { outline: 2px solid #d9a35a; outline-offset: 2px; }
+  .tabs button small { font-family: var(--display); opacity: 0.7; margin-right: 5px; }
+  .tabs button.locked { border-style: dashed; opacity: 0.85; }
+  .tabs button.locked em { font-size: 12px; opacity: 0.75; margin-left: 5px; }
+  #mirrorBtn {
+    font-family: var(--display); letter-spacing: 0.04em;
+    background: linear-gradient(#e2c078, #a97b36); color: #2a1a0a;
+    border: 1px solid #6e4a1c;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -2px 4px rgba(80, 50, 10, 0.35), 0 2px 6px rgba(0, 0, 0, 0.4);
+    padding: 6px 14px;
+  }
+  #mirrorBtn:hover { background: linear-gradient(#f0d28e, #b98a42); }
+  #mirrorBtn[aria-pressed="true"] { background: linear-gradient(#fff3d0, #e2c078); color: #2a1a0a; border-color: #fff3d0; }
+  .seg { display: flex; gap: 0; }
+  .seg button { border-radius: 0; margin-left: -1px; }
+  .seg button:first-child { border-radius: 7px 0 0 7px; margin-left: 0; }
+  .seg button:last-child { border-radius: 0 7px 7px 0; }
+
+  /* Bottom bar */
+  #bar {
+    position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%);
+    display: flex; align-items: center; justify-content: center; gap: 8px 14px; flex-wrap: wrap;
+    padding: 8px 12px;
+    background: var(--bar);
+    border: 1px solid rgba(233, 220, 192, 0.14);
+    border-radius: 12px;
+    backdrop-filter: blur(8px);
+    font-size: 15px;
+    width: min(1040px, calc(100% - 24px));
+    box-sizing: border-box;
+    z-index: 5;
+  }
+  #bar button { background: transparent; backdrop-filter: none; }
+  #bar button:hover { background: rgba(233, 220, 192, 0.08); }
+  #bar button[aria-pressed="true"] { background: var(--bar-text); }
+  .grp { display: flex; align-items: center; gap: 8px; }
+  .grp > span.lbl { font-family: var(--display); font-size: 12px; letter-spacing: 0.12em; opacity: 0.6; }
+  body[data-mode="wb"] .cine-only, body[data-mode="cine"] .wb-only { display: none; }
+  body.clean #bar, body.clean #top, body.clean #hint { display: none; }
+  #play { min-width: 70px; }
+  #scrub { flex: 1 1 160px; accent-color: var(--brass); min-width: 120px; }
+  #explode { accent-color: var(--brass); width: 130px; }
+  #time, #exOut { font-variant-numeric: tabular-nums; min-width: 42px; text-align: right; opacity: 0.8; }
+  .grow { flex: 1 1 240px; }
+
+  /* Brass drive crank */
+  #crank {
+    position: relative; width: 56px; height: 56px; border-radius: 50%; flex: none;
+    background: radial-gradient(circle at 35% 30%, #f3d58f, #c59545 45%, #7d5520 100%);
+    border: 2px solid #5b3d14;
+    box-shadow: inset 0 0 0 5px rgba(90, 58, 16, 0.35), 0 2px 8px rgba(0, 0, 0, 0.5);
+    cursor: grab; touch-action: none;
+  }
+  #crank:active { cursor: grabbing; }
+  #crankArm { position: absolute; inset: 0; pointer-events: none; }
+  #crankArm::before { content: ""; position: absolute; left: 50%; top: 8px; width: 5px; height: 21px; margin-left: -2.5px; background: #4a3010; border-radius: 3px; }
+  #crankArm::after { content: ""; position: absolute; left: 50%; top: 1px; width: 15px; height: 15px; margin-left: -7.5px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #8a5a2c, #3a230d); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6); }
+  #crank i { position: absolute; left: 50%; top: 50%; width: 10px; height: 10px; margin: -5px; border-radius: 50%; background: #3a250c; }
+  .rpm { display: grid; line-height: 1.1; min-width: 104px; }
+  .rpm b { font-family: var(--display); font-weight: 400; font-size: 19px; font-variant-numeric: tabular-nums; }
+  .rpm b span { font-size: 12px; letter-spacing: 0.12em; opacity: 0.6; margin-left: 4px; }
+  .rpm small { font-size: 12px; font-style: italic; opacity: 0.6; }
+
+  #hint {
+    position: fixed; right: 16px; top: calc(var(--toph) + 16px);
+    font-size: 13px; color: rgba(59, 38, 20, 0.7); font-style: italic; z-index: 4; text-align: right;
+    pointer-events: none; transition: opacity 1.2s; max-width: 46%;
+  }
+  #hint.off { opacity: 0; }
+  #exitClean {
+    position: fixed; right: 10px; top: 10px; z-index: 7; display: none;
+    background: var(--bar); color: var(--bar-text); border: 1px solid rgba(233, 220, 192, 0.24); border-radius: 7px;
+    padding: 5px 11px; cursor: pointer; opacity: 0; transition: opacity 0.4s;
+  }
+  body.clean #exitClean { display: block; }
+  body.clean #exitClean.show { opacity: 0.9; }
+  @media (max-width: 640px) {
+    #top, #bar { font-size: 13px; }
+    #bar { gap: 6px 8px; padding: 6px 8px; }
+    .ui button { padding: 4px 8px; }
+    #hint { display: none; }
+    .tabs button.locked em { display: none; }
+    .rpm { min-width: 70px; } .rpm small { display: none; }
+    #explode { width: 96px; }
+  }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body data-mode="wb">
+<div id="stage" aria-label="Interactive reconstruction of Leonardo da Vinci's machines">
+  <canvas id="gl"></canvas>
+  <canvas id="ov"></canvas>
+  <div class="title">
+    <div class="mirror" id="tMirror" aria-hidden="true"></div>
+    <h1 id="tName"></h1>
+    <p id="tSub"></p>
+  </div>
+  <div id="tip" role="status"></div>
+  <div id="toast" role="status"></div>
+  <div class="caption" id="cap"></div>
+</div>
+
+<div id="hint">Click a part to inspect · Drag to rotate · Scroll to zoom<br>Hold Space or spin the brass crank to drive</div>
+<button id="exitClean" type="button">Show controls (H)</button>
+
+<header id="top" class="ui">
+  <nav class="tabs" aria-label="Machines">
+    <button type="button" data-m="orni" aria-pressed="true"><small>I</small>Ornithopter</button>
+    <button type="button" data-m="cart" aria-pressed="false"><small>II</small>Self-Propelled Cart</button>
+    <button type="button" id="vote" class="locked"><small>III</small>🔒 Aerial Screw<em>Ms. B, f. 83v · Vote next</em></button>
+  </nav>
+  <div class="tools">
+    <button type="button" id="mirrorBtn" aria-pressed="false">🪞 Hold Da Vinci's Mirror</button>
+    <button type="button" id="sndBtn" aria-pressed="false">🔇 Sound: OFF</button>
+    <div class="seg" role="group" aria-label="Mode">
+      <button type="button" data-mode="wb" aria-pressed="true">Workbench</button>
+      <button type="button" data-mode="cine" aria-pressed="false">Cinematic</button>
+    </div>
+  </div>
+</header>
+
+<div id="bar" class="ui" role="toolbar" aria-label="Controls">
+  <!-- Workbench -->
+  <div class="grp wb-only">
+    <div id="crank" role="slider" tabindex="0" aria-label="Drive crank: drag, scroll, or hold Space" aria-valuemin="0" aria-valuemax="120" aria-valuenow="0"><div id="crankArm"></div><i></i></div>
+    <div class="rpm"><b><span id="rpm">0</span><span>RPM</span></b><small>drag · scroll · hold space</small></div>
+    <button type="button" id="autoBtn" aria-pressed="true">Auto-Drive</button>
+  </div>
+  <div class="grp wb-only">
+    <div class="seg" role="group" aria-label="Visual style">
+      <button type="button" data-style="ink" aria-pressed="false">Ink Sketch</button>
+      <button type="button" data-style="half" aria-pressed="true">Half &amp; Half</button>
+      <button type="button" data-style="solid" aria-pressed="false">Solid Timber</button>
+    </div>
+  </div>
+  <label class="grp wb-only"><span class="lbl">EXPLODE</span>
+    <input id="explode" type="range" min="0" max="100" value="0" aria-label="Explode and inspect">
+    <output id="exOut">0%</output>
+  </label>
+  <!-- Cinematic -->
+  <div class="grp cine-only grow">
+    <button id="play" type="button">Pause</button>
+    <input id="scrub" type="range" min="0" max="1000" value="0" aria-label="Timeline">
+    <span id="time">0.0s</span>
+  </div>
+  <div class="grp cine-only">
+    <div class="seg" role="group" aria-label="Timeline preset">
+      <button type="button" data-preset="story" aria-pressed="true">Full Story (20s)</button>
+      <button type="button" data-preset="viral" aria-pressed="false">⚡ Viral Cut (15s)</button>
+    </div>
+    <button id="capBtn" type="button" aria-pressed="true">Captions</button>
+  </div>
+  <!-- Shared: recording frame -->
+  <div class="grp">
+    <div class="seg" role="group" aria-label="Frame">
+      <button type="button" data-ar="full" aria-pressed="true">Full</button>
+      <button type="button" data-ar="9:16" aria-pressed="false">9:16</button>
+      <button type="button" data-ar="1:1" aria-pressed="false">1:1</button>
+      <button type="button" data-ar="16:9" aria-pressed="false">16:9</button>
+    </div>
+    <button id="cleanBtn" type="button">Clean frame</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { LineSegments2 } from 'three/addons/lines/LineSegments2.js';
+import { LineSegmentsGeometry } from 'three/addons/lines/LineSegmentsGeometry.js';
+import { LineMaterial } from 'three/addons/lines/LineMaterial.js';
+
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = (id) => document.getElementById(id);
+const stage = $('stage'), glCanvas = $('gl'), ov = $('ov'), capEl = $('cap'), tipEl = $('tip'), toastEl = $('toast');
+const octx = ov.getContext('2d');
+
+const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 200);
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ss = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
+const eio = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+const lerp = THREE.MathUtils.lerp;
+const TAU = Math.PI * 2;
+
+/* ---------- Shared GLSL: procedural paper, identical for the background and the shaded parts ---------- */
+const PAPER_GLSL = /* glsl */`
+uniform vec2 uRes;
+uniform float uDpr;
+float hash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float vnoise(vec2 p){
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f*f*(3.0-2.0*f);
+  return mix(mix(hash(i), hash(i+vec2(1.0,0.0)), u.x), mix(hash(i+vec2(0.0,1.0)), hash(i+vec2(1.0,1.0)), u.x), u.y);
+}
+float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ v += a*vnoise(p); p *= 2.03; a *= 0.5; } return v; }
+vec3 paper(vec2 fc){
+  vec2 uv = fc / uRes;
+  vec2 p = fc / uRes.y;
+  float n = fbm(p*3.0);
+  float fine = fbm(p*55.0);
+  float fiber = vnoise(vec2(p.x*380.0, p.y*7.0));
+  vec3 col = vec3(0.925, 0.868, 0.752) * (0.93 + 0.10*n) - 0.035*fine + 0.012*fiber;
+  float stain = smoothstep(0.56, 0.78, fbm(p*1.4 + 7.3));
+  col = mix(col, col*vec3(0.86, 0.77, 0.62), stain*0.55);
+  float foxing = smoothstep(0.80, 0.86, fbm(p*9.0 + 2.1));
+  col = mix(col, col*vec3(0.80, 0.66, 0.50), foxing*0.35);
+  float d = distance(uv, vec2(0.5));
+  col *= 1.0 - 0.42*smoothstep(0.32, 0.86, d);
+  return col;
+}`;
+// Part shaders add: ink↔timber mix with a screen-space split line, and a dither-dissolve for dimmed parts.
+const PART_GLSL = PAPER_GLSL + /* glsl */`
+uniform float uHatch, uSolid, uSplitX, uDim;
+float solMask(){ return uSolid * smoothstep(uSplitX - 0.0012, uSplitX + 0.0012, gl_FragCoord.x / uRes.x); }
+void dimDiscard(){ if (uDim > 0.004 && hash(floor(gl_FragCoord.xy) * 0.37 + 3.1) < uDim) discard; }
+`;
+
+const shared = {
+  uRes: { value: new THREE.Vector2(1, 1) },
+  uDpr: { value: 1 },
+  uHatch: { value: 1 },
+  uSolid: { value: 1 },
+  uSplitX: { value: 0.5 },
+};
+
+// Background sheet
+const bgMat = new THREE.ShaderMaterial({
+  uniforms: { uRes: shared.uRes, uDpr: shared.uDpr },
+  vertexShader: `void main(){ gl_Position = vec4(position.xy, 0.9999, 1.0); }`,
+  fragmentShader: PAPER_GLSL + `void main(){ gl_FragColor = vec4(paper(gl_FragCoord.xy), 1.0); }`,
+  depthWrite: false, depthTest: false,
+});
+const bg = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), bgMat);
+bg.frustumCulled = false;
+bg.renderOrder = -10;
+scene.add(bg);
+
+const VERT = /* glsl */`
+  varying vec3 vN; varying vec3 vObj; varying vec3 vView; varying vec2 vUv;
+  void main(){
+    vN = normalize(normalMatrix * normal);
+    vObj = position; vUv = uv;
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    vView = mv.xyz;
+    gl_Position = projectionMatrix * mv;
+  }`;
+
+// Part surface: invisible paper (but occluding) → pen hatching → tinted wood / brass
+function makeSurface(hex, metal, dimU) {
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uRes: shared.uRes, uDpr: shared.uDpr, uHatch: shared.uHatch, uSolid: shared.uSolid, uSplitX: shared.uSplitX,
+      uDim: dimU, uColor: { value: new THREE.Color(hex) }, uMetal: { value: metal },
+    },
+    vertexShader: VERT,
+    fragmentShader: PART_GLSL + /* glsl */`
+      uniform float uMetal;
+      uniform vec3 uColor;
+      varying vec3 vN; varying vec3 vObj; varying vec3 vView;
+      void main(){
+        dimDiscard();
+        float sol = solMask();
+        vec3 N = normalize(vN);
+        vec3 L = normalize(vec3(-0.45, 0.75, 0.55));
+        float diff = clamp(dot(N, L), 0.0, 1.0);
+        float lam = 0.46 + 0.54*diff;
+        vec3 pap = paper(gl_FragCoord.xy);
+        vec3 ink = vec3(0.23, 0.15, 0.08);
+
+        vec2 fc = gl_FragCoord.xy / uDpr;
+        float wob = vnoise(fc*0.04)*2.0;
+        float s1 = abs(fract((fc.x + fc.y + wob)/5.5) - 0.5);
+        float s2 = abs(fract((fc.x - fc.y + wob)/5.5) - 0.5);
+        float l1 = 1.0 - smoothstep(0.10, 0.22, s1);
+        float l2 = 1.0 - smoothstep(0.10, 0.22, s2);
+        float h = l1*(1.0 - smoothstep(0.50, 0.66, lam)) + l2*(1.0 - smoothstep(0.30, 0.44, lam));
+        h = clamp(h*(0.7 + 0.3*vnoise(fc*0.11)), 0.0, 1.0);
+        vec3 sketch = mix(pap, ink, h*0.62*uHatch);
+
+        float r = length(vObj.xy);
+        float g = fbm(vec2(r*18.0 + vObj.z*0.6, vObj.z*1.4 + r*3.0));
+        vec3 base = uColor * mix(0.80 + 0.34*g, 1.0, uMetal);
+        vec3 V = normalize(-vView);
+        vec3 H = normalize(L + V);
+        float spec = pow(max(dot(N, H), 0.0), 28.0) * uMetal;
+        vec3 lit = base*lam + spec*vec3(1.0, 0.9, 0.7)*0.75;
+        vec3 solid = lit * mix(vec3(1.0), pap/vec3(0.925, 0.868, 0.752), 0.4);
+        solid = mix(solid, ink, h*0.16);
+        gl_FragColor = vec4(mix(sketch, solid, sol), 1.0);
+      }`,
+    polygonOffset: true, polygonOffsetFactor: 1.5, polygonOffsetUnits: 2,
+    toneMapped: false,
+  });
+}
+// Wing cloth: a faint wash in ink mode, translucent raw linen with weave, back-light and a warm rim in timber mode
+function makeSail(dimU) {
+  return new THREE.ShaderMaterial({
+    uniforms: { uRes: shared.uRes, uDpr: shared.uDpr, uHatch: shared.uHatch, uSolid: shared.uSolid, uSplitX: shared.uSplitX, uDim: dimU },
+    vertexShader: VERT,
+    fragmentShader: PART_GLSL + /* glsl */`
+      varying vec3 vN; varying vec3 vObj; varying vec3 vView; varying vec2 vUv;
+      void main(){
+        float sol = solMask();
+        vec3 N = normalize(vN);
+        if (!gl_FrontFacing) N = -N;
+        vec3 V = normalize(-vView);
+        vec3 L = normalize(vec3(-0.45, 0.75, 0.55));
+        float ndl = dot(N, L);
+        float lam = 0.58 + 0.42*clamp(ndl, 0.0, 1.0);
+        float trans = clamp(-ndl, 0.0, 1.0);
+        vec3 pap = paper(gl_FragCoord.xy);
+        vec3 ink = vec3(0.23, 0.15, 0.08);
+        vec2 fc = gl_FragCoord.xy / uDpr;
+        float s1 = abs(fract((fc.x + fc.y*0.55 + vnoise(fc*0.04)*2.0)/7.5) - 0.5);
+        float l1 = 1.0 - smoothstep(0.05, 0.15, s1);
+        vec3 sk = mix(pap*vec3(0.955, 0.925, 0.87), ink, l1*0.20*uHatch);
+
+        float weave = 0.5*vnoise(vec2(vObj.x*90.0, vObj.z*14.0)) + 0.5*vnoise(vec2(vObj.x*14.0, vObj.z*90.0));
+        float cloth = fbm(vObj.xz*5.0 + 3.0);
+        float ten = pow(abs(fract(vUv.x) - 0.5)*2.0, 3.0);
+        vec3 linen = vec3(0.90, 0.81, 0.63)*(0.76 + 0.26*cloth)*(0.90 + 0.14*weave)*(1.0 - 0.20*ten)*(1.0 - 0.10*vUv.y);
+        float rim = pow(1.0 - abs(dot(N, V)), 2.2);
+        vec3 warm = vec3(1.0, 0.74, 0.45);
+        vec3 so = linen*lam + warm*(0.30*rim + 0.26*trans);
+        so *= mix(vec3(1.0), pap/vec3(0.925, 0.868, 0.752), 0.4);
+        float a = mix(0.55, 0.88 + 0.10*rim, sol) * (1.0 - 0.9*uDim);
+        gl_FragColor = vec4(mix(sk, so, sol), a);
+      }`,
+    transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false,
+  });
+}
+const MATDEF = {
+  wood: ['#cf9f66', 0], dark: ['#9e6a3f', 0], pale: ['#dcb47c', 0], walnut: ['#7d5231', 0],
+  brass: ['#c49a4c', 1], iron: ['#6f665a', 0.5], linen: 'sail',
+};
+function partMats(dimU) {
+  const cache = {}, o = {};
+  Object.keys(MATDEF).forEach((k) => Object.defineProperty(o, k, {
+    get() { return cache[k] || (cache[k] = MATDEF[k] === 'sail' ? makeSail(dimU) : makeSurface(MATDEF[k][0], MATDEF[k][1], dimU)); },
+  }));
+  return o;
+}
+let M = null; // material set of the part currently being built
+
+/* ---------- Geometry helpers (authored in world coordinates, stored relative to each part's pivot) ---------- */
+const V3 = (a) => new THREE.Vector3(a[0], a[1], a[2]);
+function ringGeo(R, r, thick, segs = 56) {
+  const s = new THREE.Shape(); s.absarc(0, 0, R, 0, Math.PI * 2, false);
+  const h = new THREE.Path(); h.absarc(0, 0, r, 0, Math.PI * 2, true); s.holes.push(h);
+  const g = new THREE.ExtrudeGeometry(s, { depth: thick, bevelEnabled: false, curveSegments: segs });
+  g.translate(0, 0, -thick / 2);
+  return g; // axis z
+}
+function orientAxis(g, axis, fromAxis) {
+  if (fromAxis === 'y') { if (axis === 'z') g.rotateX(Math.PI / 2); if (axis === 'x') g.rotateZ(Math.PI / 2); }
+  if (fromAxis === 'z') { if (axis === 'y') g.rotateX(Math.PI / 2); if (axis === 'x') g.rotateY(Math.PI / 2); }
+  return g;
+}
+
+function builder(pivot) {
+  const P = V3(pivot);
+  const meshes = [], polylines = [];
+  const loc = (a) => V3(a).sub(P);
+  const api = {
+    mesh(geo, mat, at, lookAt) {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.copy(loc(at));
+      if (lookAt) m.lookAt(loc(lookAt));
+      meshes.push(m); return m;
+    },
+    beam(a, b, w, h, mat) {
+      const len = V3(a).distanceTo(V3(b));
+      const mid = V3(a).add(V3(b)).multiplyScalar(0.5);
+      return api.mesh(new THREE.BoxGeometry(w, h, len), mat, mid.toArray(), b);
+    },
+    cyl(a, b, r, seg, mat) { return api.taper(a, b, r, r, seg, mat); },
+    taper(a, b, r0, r1, seg, mat) { // r0 at a, r1 at b
+      const len = V3(a).distanceTo(V3(b));
+      const mid = V3(a).add(V3(b)).multiplyScalar(0.5);
+      const g = new THREE.CylinderGeometry(r1, r0, len, seg, 1); g.rotateX(Math.PI / 2);
+      return api.mesh(g, mat, mid.toArray(), b);
+    },
+    box(c, size, mat) { return api.mesh(new THREE.BoxGeometry(size[0], size[1], size[2]), mat, c); },
+    disk(c, axis, r, h, seg, mat) { return api.mesh(orientAxis(new THREE.CylinderGeometry(r, r, h, seg, 1), axis, 'y'), mat, c); },
+    ring(c, axis, R, r, t, mat, segs) { return api.mesh(orientAxis(ringGeo(R, r, t, segs), axis, 'z'), mat, c); },
+    tube(points, radius, mat, segs = 28) {
+      const curve = new THREE.CatmullRomCurve3(points.map(loc));
+      const m = new THREE.Mesh(new THREE.TubeGeometry(curve, segs, radius, 5, false), mat);
+      meshes.push(m); return m;
+    },
+    // Stretched cloth between consecutive ribs ([base, tip] pairs): scalloped trailing edge, slight billow
+    sail(ribs, mat, sag = 0.13, billow = 0.05) {
+      const NU = 6, NV = 5, pos = [], uv = [], idx = [];
+      const R = ribs.map((r) => [loc(r[0]), loc(r[1])]);
+      for (let k = 0; k < R.length - 1; k++) {
+        const [b0, t0] = R[k], [b1, t1] = R[k + 1], o = pos.length / 3;
+        for (let j = 0; j <= NV; j++) for (let i = 0; i <= NU; i++) {
+          const u = i / NU, v = j / NV, bell = 4 * u * (1 - u);
+          const p = b0.clone().lerp(b1, u).lerp(t0.clone().lerp(t1, u), v * (1 - sag * bell * v));
+          p.y -= billow * bell * (0.3 + 0.7 * v);
+          pos.push(p.x, p.y, p.z); uv.push(k + u, v);
+        }
+        for (let j = 0; j < NV; j++) for (let i = 0; i < NU; i++) {
+          const a = o + j * (NU + 1) + i, b = a + 1, c = a + NU + 1, d = c + 1;
+          idx.push(a, c, b, b, c, d);
+        }
+      }
+      const g = new THREE.BufferGeometry();
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+      g.setIndex(idx); g.computeVertexNormals();
+      const m = new THREE.Mesh(g, mat); m.renderOrder = 1;
+      meshes.push(m); return m;
+    },
+    line(points) { polylines.push(points.map(loc)); },
+    circle(c, axis, r, n = 40) {
+      const pts = [];
+      for (let i = 0; i <= n; i++) {
+        const a = (i / n) * Math.PI * 2, u = Math.cos(a) * r, v = Math.sin(a) * r;
+        if (axis === 'y') pts.push([c[0] + u, c[1], c[2] + v]);
+        else if (axis === 'z') pts.push([c[0] + u, c[1] + v, c[2]]);
+        else pts.push([c[0], c[1] + u, c[2] + v]);
+      }
+      api.line(pts);
+    },
+    meshes, polylines,
+  };
+  return api;
+}
+
+/* ====================================================================================
+   MACHINE I — The Great Ornithopter
+   x = forward, y = up, z = span. Wings: three hinged segments per side, driven with phase lag.
+   ==================================================================================== */
+const HX = 0.15, HY = 1.6, HZ = 0.3, L1 = 1.0, L2 = 1.1;      // wing root hinge and segment lengths
+const keelY = (x) => 0.7 + 0.45 * Math.pow(Math.abs(x) / 1.38, 2.4);
+const hullW = (x) => Math.max(0.03, 0.44 * Math.pow(Math.max(0, 1 - (x / 1.4) ** 2), 0.7));
+const fingerDir = (s, deg) => { const b = (deg * Math.PI) / 180; return [-Math.cos(b), 0, s * Math.sin(b)]; };
+const along = (o, d, t, dy = 0) => [o[0] + d[0] * t, o[1] + d[1] * t + dy, o[2] + d[2] * t];
+const FINGERS = [[0, 1.15], [34, 1.12], [58, 1.1], [82, 1.05]]; // [angle from straight-back, length]
+
+function orniDefs() {
+  const D = [];
+  D.push({ id: 'hull', sys: 'hull', pivot: [0, 0.95, 0], explode: [0, -1.0, 0], tilt: 0,
+    it: 'scafo', itSub: 'centine di noce', en: 'hull cradle', enSub: 'bent walnut ribs', anchor: [1.25, 0.2, 0],
+    build(B) {
+      const xs = [-1.38, -1.1, -0.6, 0, 0.6, 1.1, 1.38];
+      B.tube(xs.map((x) => [x, keelY(x), 0]), 0.055, M.walnut, 36);
+      [1, -1].forEach((s) => {
+        B.tube(xs.map((x) => [x, 1.2 + 0.05 * (x / 1.38) ** 2, s * hullW(x)]), 0.04, M.walnut, 36);
+        B.tube(xs.map((x) => [x, keelY(x) + 0.16 + 0.1 * (x / 1.38) ** 2, s * hullW(x) * 0.82]), 0.022, M.walnut, 36);
+        B.box([0.6, 1.05, s * 0.35], [0.1, 0.13, 0.05], M.dark);
+      });
+      [-1.0, -0.5, 0, 0.5, 1.0].forEach((x) => {
+        const w = hullW(x), k = keelY(x);
+        B.tube([[x, 1.2, -w], [x, k + 0.16, -w * 0.82], [x, k, 0], [x, k + 0.16, w * 0.82], [x, 1.2, w]], 0.034, M.walnut, 20);
+      });
+    } });
+  D.push({ id: 'bed', sys: 'hull', pivot: [-0.3, 0.85, 0], explode: [0, -0.45, 0], tilt: 0,
+    build(B) {
+      B.box([-0.3, 0.85, 0], [1.2, 0.035, 0.3], M.pale);
+      B.box([-0.75, 0.82, 0], [0.06, 0.05, 0.5], M.dark);
+      B.box([0.15, 0.82, 0], [0.06, 0.05, 0.56], M.dark);
+    } });
+  D.push({ id: 'mast', sys: 'mast', pivot: [HX, 1.65, 0], explode: [0, 0, 0], tilt: 0,
+    build(B) {
+      [1, -1].forEach((s) => {
+        B.beam([HX, 1.2, s * 0.42], [HX, 2.12, s * 0.07], 0.07, 0.07, M.wood);
+        B.beam([HX, 2.04, s * 0.06], [0.8, 1.22, s * 0.3], 0.045, 0.045, M.wood);
+        B.beam([HX, 2.04, s * 0.06], [-0.5, 1.22, s * 0.38], 0.045, 0.045, M.wood);
+      });
+      B.beam([HX, HY, -0.38], [HX, HY, 0.38], 0.09, 0.09, M.dark);
+      B.box([HX, 2.1, 0], [0.16, 0.14, 0.2], M.dark);
+    } });
+  D.push({ id: 'crank', sys: 'drive', pivot: [0.6, 1.05, 0], explode: [0.95, 0.15, 0],
+    it: 'manovella', itSub: 'gira la puleggia', en: 'hand crank', enSub: 'turns the pulley cam', anchor: [0, 0, 0.32],
+    build(B) {
+      const c = [0.6, 1.05, 0];
+      B.cyl([0.6, 1.05, -0.32], [0.6, 1.05, 0.32], 0.03, 8, M.iron);
+      B.ring(c, 'z', 0.2, 0.15, 0.06, M.pale, 28);
+      B.disk(c, 'z', 0.06, 0.1, 10, M.dark);
+      for (let i = 0; i < 4; i++) {
+        const a = (i / 4) * TAU + 0.6;
+        B.beam([0.6 + Math.cos(a) * 0.05, 1.05 + Math.sin(a) * 0.05, 0], [0.6 + Math.cos(a) * 0.16, 1.05 + Math.sin(a) * 0.16, 0], 0.04, 0.035, M.wood);
+      }
+      B.cyl([0.77, 1.05, 0.02], [0.77, 1.05, 0.11], 0.022, 8, M.brass);
+      [1, -1].forEach((s) => {
+        B.beam([0.6, 1.05, s * 0.27], [0.6, 1.05 + s * 0.16, s * 0.27], 0.045, 0.03, M.dark);
+        B.cyl([0.6, 1.05 + s * 0.16, s * 0.27], [0.6, 1.05 + s * 0.16, s * 0.12], 0.024, 8, M.wood);
+      });
+    } });
+  D.push({ id: 'conrod', sys: 'drive', link: true, r: 0.02, mat: 'dark', pivot: [0.77, 1.05, 0.07], explode: [0.6, 0.55, 0] });
+  D.push({ id: 'rocker', sys: 'rocker', pivot: [HX, 2.1, 0], explode: [0, 0.8, 0], tilt: 0,
+    it: 'bilanciere', itSub: 'alza e abbassa', en: 'rocker arm', enSub: 'rotary → up-and-down', anchor: [-0.75, 0, 0],
+    build(B) {
+      B.beam([-0.6, 2.1, 0], [0.9, 2.1, 0], 0.07, 0.1, M.wood);
+      B.disk([HX, 2.1, 0], 'z', 0.09, 0.26, 12, M.brass);
+      B.disk([0.6, 2.1, 0], 'z', 0.045, 0.14, 10, M.brass);
+      B.disk([0.9, 2.1, 0], 'z', 0.05, 0.12, 10, M.iron);
+      B.beam([-0.6, 2.1, -0.17], [-0.6, 2.1, 0.17], 0.05, 0.05, M.dark);
+    } });
+  [1, -1].forEach((s) => {
+    const n = s > 0 ? 'R' : 'L';
+    const H = [HX, HY, s * HZ], E = [HX, HY, s * (HZ + L1)], W = [HX, HY, s * (HZ + L1 + L2)];
+    const rib = (B, z, len, r0 = 0.032) => B.taper([HX + 0.1, HY, z], [HX - len, HY - 0.07, z], r0, 0.012, 5, M.wood);
+    const sy = HY - 0.03;
+    D.push({ id: 'stay' + n, sys: 'rocker', link: true, r: 0.017, mat: 'iron', pivot: [0.9, 2.1, 0], explode: [0.45, 0.55, s * 0.2] });
+    D.push({ id: 'treadle' + n, sys: 'treadle', pivot: [-1.0, 0.92, s * 0.2], explode: [-0.95, -0.5, s * 0.3],
+      ...(s > 0 ? { it: 'staffa', itSub: 'spinta dei piedi', en: 'foot treadle', enSub: 'leg power', anchor: [0.38, 0.05, 0] } : {}),
+      build(B) {
+        B.box([-0.8, 0.92, s * 0.2], [0.42, 0.035, 0.13], M.wood);
+        B.cyl([-1.0, 0.92, s * 0.11], [-1.0, 0.92, s * 0.29], 0.025, 8, M.iron);
+        B.ring([-0.63, 1.01, s * 0.2], 'x', 0.085, 0.064, 0.02, M.iron, 20);
+      } });
+    D.push({ id: 'cord' + n, sys: 'treadle', link: true, r: 0.011, mat: 'pale', pivot: [-0.6, 0.95, s * 0.2], explode: [-0.8, 0.1, s * 0.3] });
+    // Inner arm — humerus
+    D.push({ id: 'arm' + n, sys: 'spar', seg: n + '1', pivot: H, explode: [0, 0.3, s * 0.35], tilt: 0,
+      ...(s > 0 ? { it: 'omero', itSub: 'asta maestra', en: 'primary wing spar', enSub: 'sin(φ) — leads the beat', anchor: [0, 0.05, 0.5] } : {}),
+      build(B) {
+        B.cyl(H, E, 0.048, 8, M.dark);
+        B.taper([HX - 0.3, HY, s * (HZ + 0.12)], E, 0.03, 0.02, 6, M.wood);
+        B.disk(H, 'x', 0.075, 0.12, 12, M.brass);
+        B.disk([HX, HY + 0.03, s * 0.9], 'x', 0.04, 0.1, 8, M.iron);
+        rib(B, s * (HZ + 0.12), 1.05); rib(B, s * (HZ + 0.55), 1.15);
+      } });
+    // Mid wing — radius & ulna
+    D.push({ id: 'fore' + n, sys: 'fore', seg: n + '2', pivot: E, explode: [0, 0.45, s * 0.8], tilt: 0,
+      ...(s > 0 ? { it: 'radio e ulna', itSub: 'segue in ritardo', en: 'mid wing', enSub: 'sin(φ − 0.45) — lags', anchor: [0, 0.05, 0.55] } : {}),
+      build(B) {
+        B.cyl(E, W, 0.032, 8, M.dark);
+        B.cyl([HX - 0.09, HY, E[2]], [HX - 0.09, HY, W[2]], 0.025, 6, M.wood);
+        B.disk(E, 'x', 0.065, 0.2, 12, M.brass);
+        rib(B, E[2], 1.25, 0.034); rib(B, s * (HZ + L1 + 0.55), 1.25);
+      } });
+    // Wingtip — carpals and fingers
+    D.push({ id: 'hand' + n, sys: 'fingers', seg: n + '3', pivot: W, explode: [0, 0.6, s * 1.3], tilt: 0,
+      ...(s > 0 ? { it: 'dita', itSub: 'come il pipistrello', en: 'wingtip fingers', enSub: 'sin(φ − 0.9) — whips', anchor: [-0.25, 0.05, 0.8] } : {}),
+      build(B) {
+        B.disk(W, 'x', 0.06, 0.2, 12, M.brass);
+        FINGERS.forEach(([deg, len], i) => {
+          const d = fingerDir(s, deg);
+          B.taper(i === 0 ? [HX + 0.1, HY, W[2]] : W, along(W, d, len, -0.06), i === 3 ? 0.036 : 0.03, 0.011, 5, i === 3 ? M.dark : M.wood);
+        });
+      } });
+    // Linen panels, one per wing segment so they fold with the joints
+    const sails = [
+      [[[HX, sy, s * (HZ + 0.12)], 1.05], [[HX, sy, s * (HZ + 0.55)], 1.15], [[HX, sy, E[2]], 1.25]],
+      [[[HX, sy, E[2]], 1.25], [[HX, sy, s * (HZ + L1 + 0.55)], 1.25], [[HX, sy, W[2]], 1.15]],
+    ].map((rs) => rs.map(([b, len]) => [b, [HX - len, sy - 0.07, b[2]]]));
+    const Ws = [W[0], sy, W[2]];
+    sails.push(FINGERS.map(([deg, len]) => { const d = fingerDir(s, deg); return [along(Ws, d, 0.05), along(Ws, d, len, -0.06)]; }));
+    const pv = [H, E, W], ex = [[-0.15, 1.25, s * 0.35], [-0.15, 1.4, s * 0.8], [-0.15, 1.55, s * 1.3]];
+    sails.forEach((rs, i) => D.push({ id: 'sail' + n + (i + 1), sys: 'membrane', seg: n + (i + 1), pivot: pv[i], explode: ex[i], tilt: 0,
+      ...(s < 0 && i === 1 ? { it: 'tela di lino', itSub: 'tesa sulle centine', en: 'linen membrane', enSub: 'stretched over the ribs', anchor: [-0.75, 0, -0.5] } : {}),
+      build(B) { B.sail(rs, M.linen); } }));
+  });
+  const TP = [-1.34, 1.12, 0], TF = [-1.5, 1.2, 0];
+  D.push({ id: 'tail', sys: 'tail', pivot: TP, explode: [-1.2, 0.3, 0], tilt: 0,
+    it: 'coda', itSub: 'tiene il volo', en: 'tail rudder', enSub: 'trims the pitch', anchor: [-0.9, 0.2, 0],
+    build(B) {
+      B.cyl(TP, TF, 0.04, 8, M.dark);
+      B.disk(TF, 'z', 0.05, 0.12, 10, M.brass);
+      const rs = [-46, -23, 0, 23, 46].map((deg) => {
+        const b = (deg * Math.PI) / 180, d = [-Math.cos(b), 0.16, Math.sin(b)];
+        B.taper(TF, along(TF, d, 1.0), 0.028, 0.01, 5, M.wood);
+        return [along(TF, d, 0.06, -0.025), along(TF, d, 1.0, -0.025)];
+      });
+      B.sail(rs, M.linen, 0.16, 0.03);
+    } });
+  return D;
+}
+
+const AX = new THREE.Vector3(1, 0, 0), AY = new THREE.Vector3(0, 1, 0), AZ = new THREE.Vector3(0, 0, 1);
+const qAx = (axis, a) => new THREE.Quaternion().setFromAxisAngle(axis, a);
+const tA = new THREE.Vector3(), tB = new THREE.Vector3();
+function partPt(p, rest, out) { return out.set(rest[0], rest[1], rest[2]).sub(p.base).applyQuaternion(p.kQuat).add(p.kPos); }
+function setLink(p, A, B) {
+  p.kPos.copy(A);
+  tB.copy(B).sub(A); p.kLen = tB.length();
+  p.kQuat.setFromUnitVectors(AZ, tB.normalize());
+}
+function orniKin(mc, S) {
+  const ph = S.phase, P = mc.byId;
+  P.crank.kQuat.setFromAxisAngle(AZ, -ph);                       // pulley pin goes round…
+  P.rocker.kQuat.setFromAxisAngle(AZ, 0.3 * Math.sin(ph));       // …rocker turns it into an up-and-down stroke
+  const pedal = qAx(AZ, -0.5 * Math.sin(ph));
+  P.treadleR.kQuat.copy(pedal); P.treadleL.kQuat.copy(pedal);
+  P.tail.kQuat.setFromAxisAngle(AZ, 0.13 * Math.sin(ph - 1.2));
+  // Wave kinematics: shoulder sin(φ), elbow sin(φ−0.45), wrist sin(φ−0.9), plus cos(φ) feathering
+  const a1 = 0.07 + 0.38 * Math.sin(ph), r2 = 0.26 * Math.sin(ph - 0.45) - 0.03, r3 = 0.32 * Math.sin(ph - 0.9) - 0.04;
+  const feather = 0.12 * Math.cos(ph), tipFeather = 0.14 * Math.cos(ph - 0.9);
+  [1, -1].forEach((s) => {
+    const n = s > 0 ? 'R' : 'L';
+    const Q1 = qAx(AX, -s * a1).multiply(qAx(AZ, feather));
+    const Q2 = Q1.clone().multiply(qAx(AX, -s * r2));
+    const Q3 = Q2.clone().multiply(qAx(AX, -s * r3)).multiply(qAx(AZ, tipFeather));
+    const H = P['arm' + n].base;
+    const E = new THREE.Vector3(0, 0, s * L1).applyQuaternion(Q1).add(H);
+    const W = new THREE.Vector3(0, 0, s * L2).applyQuaternion(Q2).add(E);
+    [[Q1, H], [Q2, E], [Q3, W]].forEach(([q, o], i) => {
+      [P[['arm', 'fore', 'hand'][i] + n], P['sail' + n + (i + 1)]].forEach((p) => { p.kQuat.copy(q); p.kPos.copy(o); });
+    });
+    setLink(P['stay' + n], partPt(P.rocker, [0.9, 2.1, 0], tA), partPt(P['arm' + n], [HX, HY + 0.03, s * 0.9], new THREE.Vector3()));
+    setLink(P['cord' + n], partPt(P['treadle' + n], [-0.6, 0.94, s * 0.2], tA), partPt(P.rocker, [-0.6, 2.1, s * 0.15], new THREE.Vector3()));
+  });
+  setLink(P.conrod, partPt(P.crank, [0.77, 1.05, 0.07], tA), partPt(P.rocker, [0.6, 2.1, 0.07], new THREE.Vector3()));
+  // The hull heaves against the wing beat
+  mc.root.position.y = 0.06 * Math.sin(ph - 2.0) * S.run;
+  mc.root.rotation.z = 0.02 * Math.sin(ph - 1.5) * S.run;
+}
+
+/* ====================================================================================
+   MACHINE II — The Self-Propelled Cart (unchanged geometry)
+   ==================================================================================== */
+function wheel(B, c, R, thick, spokes, cleats, mat) {
+  B.ring(c, 'z', R, R - 0.1, thick, mat);
+  B.disk(c, 'z', 0.13, thick * 2.3, 10, M.dark);
+  for (let i = 0; i < spokes; i++) {
+    const a = (i / spokes) * Math.PI * 2 + 0.2;
+    B.beam([c[0] + Math.cos(a) * 0.12, c[1] + Math.sin(a) * 0.12, c[2]],
+           [c[0] + Math.cos(a) * (R - 0.09), c[1] + Math.sin(a) * (R - 0.09), c[2]], 0.055, 0.055, mat);
+  }
+  for (let i = 0; i < cleats; i++) {
+    const a = (i / cleats) * Math.PI * 2;
+    B.beam([c[0] + Math.cos(a) * (R - 0.02), c[1] + Math.sin(a) * (R - 0.02), c[2]],
+           [c[0] + Math.cos(a) * (R + 0.055), c[1] + Math.sin(a) * (R + 0.055), c[2]], thick * 0.8, thick * 0.8, M.dark);
+  }
+}
+function pinion(B, c) {
+  B.disk([c[0], c[1], c[2] - 0.09], 'z', 0.29, 0.04, 28, M.pale);
+  B.disk([c[0], c[1], c[2] + 0.09], 'z', 0.29, 0.04, 28, M.pale);
+  for (let i = 0; i < 10; i++) {
+    const a = (i / 10) * Math.PI * 2;
+    const x = c[0] + Math.cos(a) * 0.23, y = c[1] + Math.sin(a) * 0.23;
+    B.cyl([x, y, c[2] - 0.09], [x, y, c[2] + 0.09], 0.022, 6, M.dark);
+  }
+}
+function crown(B, c) {
+  B.ring(c, 'y', 0.6, 0.5, 0.09, M.pale);
+  B.disk(c, 'y', 0.11, 0.14, 12, M.dark);
+  for (let i = 0; i < 4; i++) {
+    const a = (i / 4) * Math.PI * 2 + 0.4;
+    B.beam([c[0] + Math.cos(a) * 0.1, c[1], c[2] + Math.sin(a) * 0.1], [c[0] + Math.cos(a) * 0.51, c[1], c[2] + Math.sin(a) * 0.51], 0.06, 0.05, M.wood);
+  }
+  for (let i = 0; i < 20; i++) {
+    const a = (i / 20) * Math.PI * 2;
+    const x = c[0] + Math.cos(a) * 0.55, z = c[2] + Math.sin(a) * 0.55;
+    B.cyl([x, c[1] - 0.04, z], [x, c[1] - 0.29, z], 0.026, 6, M.dark);
+  }
+}
+function drum(B, c) {
+  B.disk(c, 'y', 0.34, 0.4, 40, M.brass);
+  for (let i = 0; i < 14; i++) {
+    const a = (i / 14) * Math.PI * 2;
+    B.line([[c[0] + Math.cos(a) * 0.342, c[1] - 0.2, c[2] + Math.sin(a) * 0.342], [c[0] + Math.cos(a) * 0.342, c[1] + 0.2, c[2] + Math.sin(a) * 0.342]]);
+  }
+  B.circle([c[0], c[1] + 0.11, c[2]], 'y', 0.346, 44);
+  B.circle([c[0], c[1] - 0.11, c[2]], 'y', 0.346, 44);
+  const sp = [];
+  for (let i = 0; i <= 160; i++) {
+    const k = i / 160, a = k * Math.PI * 2 * 4.2, r = 0.05 + 0.25 * k;
+    sp.push([c[0] + Math.cos(a) * r, c[1] + 0.203, c[2] + Math.sin(a) * r]);
+  }
+  B.line(sp);
+}
+function bow(B, side) {
+  const y = 1.32, zA = side * 1.1, zM = side * 1.52;
+  const pts = [[1.08, y, zA], [0.8, y, side * 1.38], [0.5, y, zM], [0.2, y, side * 1.38], [-0.08, y, zA]];
+  B.tube(pts, 0.045, M.dark);
+  B.box([1.08, y - 0.08, zA], [0.16, 0.16, 0.16], M.wood);
+  B.box([-0.08, y - 0.08, zA], [0.16, 0.16, 0.16], M.wood);
+  B.line([[1.06, y, side * 1.12], [0.5, y, side * 1.2], [-0.06, y, side * 1.12]]);
+}
+const FY = 1.1; // frame beam centre height
+const cartDefs = () => [
+  { id: 'frame', sys: 'frame', pivot: [0, FY, 0], explode: [0, -0.15, 0], tilt: 0,
+    it: 'telaio', itSub: 'legno di quercia', en: 'frame', enSub: 'oak chassis', anchor: [1.0, 0, -1.15],
+    build(B) {
+      const t = 0.16, x0 = -1.6, x1 = 1.0, z = 1.15;
+      B.beam([x0, FY, -z], [x1, FY, -z], t, t, M.wood);
+      B.beam([x0, FY, z], [x1, FY, z], t, t, M.wood);
+      B.beam([x0, FY, -z - 0.08], [x0, FY, z + 0.08], t, t, M.wood);
+      B.beam([x1, FY, -z - 0.08], [x1, FY, z + 0.08], t, t, M.wood);
+      B.beam([x1, FY, -z], [1.6, FY, -0.22], t, t, M.wood);
+      B.beam([x1, FY, z], [1.6, FY, 0.22], t, t, M.wood);
+      B.box([1.6, FY, 0], [0.34, 0.2, 0.56], M.dark);
+      B.beam([-0.45, FY, -z], [-0.45, FY, z], t * 0.9, t * 0.9, M.wood);
+      B.beam([0.5, FY, -z], [0.5, FY, z], t * 0.9, t * 0.9, M.wood);
+      B.box([-1.2, 0.93, -z], [0.24, 0.28, 0.17], M.dark);
+      B.box([-1.2, 0.93, z], [0.24, 0.28, 0.17], M.dark);
+    } },
+  { id: 'wheelL', sys: 'wheels', pivot: [-1.2, 0.8, -1.38], explode: [0, -0.25, -1.55], spin: 'wheel',
+    it: 'ruota', itSub: 'spinge il carro', en: 'drive wheel', enSub: 'cleated rim', anchor: [0, 0.8, 0],
+    build(B) { wheel(B, [-1.2, 0.8, -1.38], 0.8, 0.12, 8, 18, M.wood); } },
+  { id: 'wheelR', sys: 'wheels', pivot: [-1.2, 0.8, 1.38], explode: [0, -0.25, 1.55], spin: 'wheel',
+    build(B) { wheel(B, [-1.2, 0.8, 1.38], 0.8, 0.12, 8, 18, M.wood); } },
+  { id: 'axle', sys: 'wheels', pivot: [-1.2, 0.8, 0], explode: [0, -1.15, 0], spin: 'wheel',
+    it: 'asse', itSub: 'porta le ruote', en: 'axle', enSub: 'carries both wheels', anchor: [0, 0, -0.9],
+    build(B) { B.cyl([-1.2, 0.8, -1.56], [-1.2, 0.8, 1.56], 0.06, 8, M.dark); } },
+  { id: 'front', sys: 'steer', pivot: [1.6, 0.42, 0], explode: [1.35, -0.2, 0], spin: 'front', steer: true,
+    build(B) { wheel(B, [1.6, 0.42, 0], 0.42, 0.09, 6, 12, M.wood); } },
+  { id: 'fork', sys: 'steer', pivot: [1.6, 1.3, 0], explode: [0.95, 0.6, 0], steer: true,
+    it: 'timone', itSub: 'guida la via', en: 'steering', enSub: 'follows the cam', anchor: [0, 0.6, 0],
+    build(B) {
+      B.cyl([1.6, 0.98, 0], [1.6, 1.95, 0], 0.06, 8, M.dark);
+      B.beam([1.6, 0.98, -0.2], [1.6, 0.98, 0.2], 0.1, 0.08, M.wood);
+      B.beam([1.6, 0.98, -0.17], [1.6, 0.42, -0.17], 0.06, 0.06, M.wood);
+      B.beam([1.6, 0.98, 0.17], [1.6, 0.42, 0.17], 0.06, 0.06, M.wood);
+      B.cyl([1.6, 0.42, -0.22], [1.6, 0.42, 0.22], 0.03, 8, M.iron);
+    } },
+  { id: 'pinionL', sys: 'gears', pivot: [-1.2, 0.8, -0.62], explode: [0, -0.55, -0.2], spin: 'wheel',
+    build(B) { pinion(B, [-1.2, 0.8, -0.62]); } },
+  { id: 'pinionR', sys: 'gears', pivot: [-1.2, 0.8, 0.62], explode: [0, -0.55, 0.2], spin: 'wheel',
+    it: 'rocchetto', itSub: 'a lanterna', en: 'lantern pinion', enSub: 'meshes with the crown gear', anchor: [0, -0.28, 0],
+    build(B) { pinion(B, [-1.2, 0.8, 0.62]); } },
+  { id: 'gearL', sys: 'gears', pivot: [-0.45, 1.36, -0.62], explode: [0, 0.95, -0.28], spin: 'gear',
+    it: 'ruota dentata', itSub: 'venti denti', en: 'crown gear', enSub: 'twenty pegs', anchor: [-0.6, 0, 0],
+    build(B) { crown(B, [-0.45, 1.36, -0.62]); } },
+  { id: 'gearR', sys: 'gears', pivot: [-0.45, 1.36, 0.62], explode: [0, 0.95, 0.28], spin: 'gear',
+    build(B) { crown(B, [-0.45, 1.36, 0.62]); } },
+  { id: 'drumL', sys: 'springs', pivot: [-0.45, 1.78, -0.62], explode: [0, 1.95, -0.5], spin: 'gear',
+    build(B) { drum(B, [-0.45, 1.78, -0.62]); } },
+  { id: 'drumR', sys: 'springs', pivot: [-0.45, 1.78, 0.62], explode: [0, 1.95, 0.5], spin: 'gear',
+    it: 'molla', itSub: 'la forza motrice', en: 'coiled spring', enSub: 'the motor', anchor: [0, 0.2, 0.34],
+    build(B) { drum(B, [-0.45, 1.78, 0.62]); } },
+  { id: 'shaftL', sys: 'gears', pivot: [-0.45, 1.8, -0.62], explode: [0, 2.85, -0.1], spin: 'gear',
+    build(B) { B.cyl([-0.45, 1.18, -0.62], [-0.45, 2.42, -0.62], 0.05, 8, M.dark); } },
+  { id: 'shaftR', sys: 'gears', pivot: [-0.45, 1.8, 0.62], explode: [0, 2.85, 0.1], spin: 'gear',
+    build(B) { B.cyl([-0.45, 1.18, 0.62], [-0.45, 2.42, 0.62], 0.05, 8, M.dark); } },
+  { id: 'gantry', sys: 'gantry', pivot: [-0.45, 1.85, 0], explode: [0, 3.45, 0],
+    build(B) {
+      const t = 0.14;
+      B.beam([-0.45, 2.48, -1.23], [-0.45, 2.48, 1.23], t, t, M.wood);
+      B.beam([-0.45, 1.18, -1.15], [-0.45, 2.55, -1.15], t, t, M.wood);
+      B.beam([-0.45, 1.18, 1.15], [-0.45, 2.55, 1.15], t, t, M.wood);
+      B.beam([-0.95, 1.18, -1.15], [-0.45, 1.95, -1.15], 0.08, 0.08, M.wood);
+      B.beam([-0.95, 1.18, 1.15], [-0.45, 1.95, 1.15], 0.08, 0.08, M.wood);
+      B.beam([0.05, 1.18, -1.15], [-0.45, 1.95, -1.15], 0.08, 0.08, M.wood);
+      B.beam([0.05, 1.18, 1.15], [-0.45, 1.95, 1.15], 0.08, 0.08, M.wood);
+    } },
+  { id: 'bowL', sys: 'bows', pivot: [0.5, 1.32, -1.3], explode: [0.25, 0.45, -1.45],
+    it: 'balestra', itSub: 'regola la forza', en: 'leaf spring', enSub: 'regulates the drive', anchor: [0, 0, -0.2],
+    build(B) { bow(B, -1); } },
+  { id: 'bowR', sys: 'bows', pivot: [0.5, 1.32, 1.3], explode: [0.25, 0.45, 1.45],
+    build(B) { bow(B, 1); } },
+  { id: 'post', sys: 'regulator', pivot: [0.5, 1.8, 0], explode: [0.45, 1.05, 0],
+    build(B) {
+      B.beam([0.5, 1.18, 0], [0.5, 2.55, 0], 0.12, 0.12, M.wood);
+      B.box([0.5, 1.26, 0], [0.3, 0.12, 0.3], M.dark);
+    } },
+  { id: 'balance', sys: 'regulator', pivot: [0.5, 2.62, 0], explode: [0.5, 2.55, 0], swing: true,
+    it: 'bilanciere', itSub: 'tempera il moto', en: 'balance', enSub: 'escapement', anchor: [0, 0, 0.95],
+    build(B) {
+      B.beam([0.5, 2.62, -0.95], [0.5, 2.62, 0.95], 0.08, 0.08, M.wood);
+      B.disk([0.5, 2.62, -0.95], 'y', 0.14, 0.22, 10, M.brass);
+      B.disk([0.5, 2.62, 0.95], 'y', 0.14, 0.22, 10, M.brass);
+      B.disk([0.5, 2.62, 0], 'y', 0.09, 0.16, 10, M.iron);
+    } },
+  { id: 'cam', sys: 'steer', pivot: [1.6, 2.0, 0], explode: [1.05, 1.75, 0], spin: 'cam',
+    it: 'camma', itSub: 'scrive il cammino', en: 'steering cam', enSub: 'a pre-set route', anchor: [0.3, 0, 0],
+    build(B) {
+      B.disk([1.6, 2.0, 0], 'y', 0.33, 0.06, 36, M.pale);
+      [0.2, 1.1, 1.5, 2.6, 3.9, 4.4].forEach((a) => {
+        B.beam([1.6 + Math.cos(a) * 0.25, 2.03, Math.sin(a) * 0.25], [1.6 + Math.cos(a) * 0.25, 2.15, Math.sin(a) * 0.25], 0.05, 0.05, M.dark);
+      });
+      B.circle([1.6, 2.031, 0], 'y', 0.18, 36);
+    } },
+];
+const CART_K = 1 / 3.2; // drive phase → the cart's original "seconds of running"
+const eul = new THREE.Euler(0, 0, 0, 'YXZ');
+function cartKin(mc, S) {
+  const ph = S.phase * CART_K, rr = S.run;
+  mc.parts.forEach((p) => {
+    eul.set(0, 0, 0);
+    if (p.spin === 'wheel') eul.z = -ph * 2.3;
+    if (p.spin === 'front') eul.z = -ph * 4.4;
+    if (p.spin === 'gear') eul.y = ph * 1.05;
+    if (p.spin === 'cam') eul.y = ph * 0.35;
+    if (p.steer) eul.y += 0.16 * Math.sin(ph * 0.35 * 3) * rr;
+    if (p.swing) eul.y = 0.55 * Math.sin(ph * 3.2) * rr;
+    p.kQuat.setFromEuler(eul);
+  });
+}
+
+/* ---------- Build a machine: meshes + ink edges with reveal timing ---------- */
+const STAGGER = 0.17;
+function rng(seed) { let s = seed >>> 0; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
+function buildMachine(spec) {
+  const root = new THREE.Group(); root.visible = false; scene.add(root);
+  const rand = rng(spec.seed), parts = [];
+  spec.defs.forEach((d, idx) => {
+    const dimU = { value: 0 };
+    M = partMats(dimU);
+    const B = builder(d.pivot);
+    if (d.link) B.cyl(d.pivot, [d.pivot[0], d.pivot[1], d.pivot[2] + 1], d.r, 6, M[d.mat]); // unit rod, posed between two moving points
+    else d.build(B);
+    const group = new THREE.Group(), surf = new THREE.Group();
+    B.meshes.forEach((m) => surf.add(m));
+    group.add(surf);
+
+    // Collect edge segments in pivot-local space
+    const segs = [];
+    B.meshes.forEach((m) => {
+      m.updateMatrix();
+      const eg = new THREE.EdgesGeometry(m.geometry, 24);
+      const a = eg.attributes.position;
+      for (let i = 0; i < a.count; i += 2) {
+        segs.push([new THREE.Vector3().fromBufferAttribute(a, i).applyMatrix4(m.matrix),
+                   new THREE.Vector3().fromBufferAttribute(a, i + 1).applyMatrix4(m.matrix)]);
+      }
+      eg.dispose();
+    });
+    B.polylines.forEach((pl) => { for (let i = 0; i < pl.length - 1; i++) segs.push([pl[i].clone(), pl[i + 1].clone()]); });
+    // Draftsman's overshoot on long straight strokes
+    segs.forEach((s) => {
+      const len = s[0].distanceTo(s[1]);
+      if (len > 0.18) {
+        const dir = s[1].clone().sub(s[0]).normalize().multiplyScalar(Math.min(0.045, len * 0.05));
+        s[0].sub(dir); s[1].add(dir);
+      }
+    });
+    const total = segs.reduce((acc, s) => acc + s[0].distanceTo(s[1]), 0);
+    const start = idx * STAGGER;
+    const dur = 1.0 + Math.min(1.25, total * 0.055);
+    const pos = new Float32Array(segs.length * 6), dist = new Float32Array(segs.length * 2);
+    let cum = 0;
+    segs.forEach((s, i) => {
+      pos.set([s[0].x, s[0].y, s[0].z, s[1].x, s[1].y, s[1].z], i * 6);
+      const l = s[0].distanceTo(s[1]);
+      dist[i * 2] = start + (cum / total) * dur;
+      cum += l;
+      dist[i * 2 + 1] = start + (cum / total) * dur;
+    });
+    const lg = new LineSegmentsGeometry();
+    lg.setPositions(pos);
+    const ib = new THREE.InstancedInterleavedBuffer(dist, 2, 1);
+    lg.setAttribute('instanceDistanceStart', new THREE.InterleavedBufferAttribute(ib, 1, 0));
+    lg.setAttribute('instanceDistanceEnd', new THREE.InterleavedBufferAttribute(ib, 1, 1));
+    // Ink: fat lines whose "dash" length is hijacked into a draw-on reveal
+    const lineMat = new LineMaterial({
+      color: 0x3b2614, linewidth: 1.55, dashed: true, dashScale: 1, dashSize: 0, gapSize: 1e5,
+      transparent: true, opacity: 0.95, worldUnits: false,
+    });
+    const ln = new LineSegments2(lg, lineMat);
+    ln.renderOrder = 2; ln.frustumCulled = false;
+    group.add(ln);
+    group.position.fromArray(d.pivot);
+    root.add(group);
+
+    const tiltAxis = new THREE.Vector3(rand() - 0.5, rand() - 0.5, rand() - 0.5).normalize();
+    const p = {
+      ...d, group, surf, lineMat, dimU, start, end: start + dur,
+      base: V3(d.pivot), off: V3(d.explode),
+      delay: Math.min(0.4, (Math.abs(d.explode[1]) + Math.abs(d.explode[2]) * 0.6) * 0.09),
+      tiltAxis, tiltAmt: d.tilt === 0 || d.link ? 0 : 0.12 + rand() * 0.16,
+      anchorV: d.anchor ? V3(d.anchor) : new THREE.Vector3(),
+      kPos: new THREE.Vector3(), kQuat: new THREE.Quaternion(), kLen: 1, ei: 0,
+    };
+    surf.children.forEach((m) => { m.userData.part = p; });
+    parts.push(p);
+  });
+  const mc = { ...spec, root, parts, byId: Object.fromEntries(parts.map((p) => [p.id, p])),
+    MAXT: Math.max(...parts.map((p) => p.end)) + 0.01, fitA: { c: new THREE.Vector3(), r: 1 }, fitE: { c: new THREE.Vector3(), r: 1 } };
+  root.visible = true;
+  measure(mc, 0, mc.fitA); measure(mc, 1, mc.fitE);
+  root.visible = false;
+  return mc;
+}
+const tq = new THREE.Quaternion();
+function pose(mc, S) {
+  mc.parts.forEach((p) => { p.kPos.copy(p.base); p.kQuat.identity(); p.kLen = 1; });
+  mc.root.position.set(0, 0, 0); mc.root.rotation.set(0, 0, 0);
+  mc.kin(mc, S);
+  mc.parts.forEach((p) => {
+    const ei = eio(clamp((S.e * 1.4 - p.delay) / 1.0));
+    p.ei = ei;
+    p.group.position.copy(p.kPos).addScaledVector(p.off, ei);
+    p.group.quaternion.copy(tq.setFromAxisAngle(p.tiltAxis, p.tiltAmt * ei).multiply(p.kQuat));
+    if (p.link) p.group.scale.set(1, 1, p.kLen);
+  });
+  mc.root.updateMatrixWorld(true);
+}
+function measure(mc, e, out) {
+  pose(mc, { phase: 0, run: 0, e });
+  const box = new THREE.Box3();
+  mc.parts.forEach((p) => box.expandByObject(p.surf, true));
+  const s = box.getBoundingSphere(new THREE.Sphere());
+  out.c.copy(s.center); out.r = s.radius * (e > 0.5 ? mc.fitK[1] : mc.fitK[0]);
+}
+
+/* ---------- Content: titles, mirror-script notes, inspection notes ---------- */
+const MACHINES = {
+  orni: buildMachine({
+    id: 'orni', seed: 7, defs: orniDefs(), kin: orniKin, fitK: [0.8, 0.86], storyK: 8.4, az0: 0.42,
+    name: 'The Great Ornithopter', sub: 'Leonardo da Vinci · Codex Atlanticus, f. 846v · c. 1488',
+    mirrorIt: 'uccello che vola per forza d omo', mirrorEn: 'a bird that flies by the strength of a man',
+    notesIt: ['l uccello è strumento che opera per legge matematica', 'la manovella alza e abbassa le ali', 'le punte seguono in ritardo come frusta', 'tela di lino tesa sopra le centine'],
+    notesEn: ['a bird is an instrument working by mathematical law', 'the crank raises and lowers the wings', 'the tips follow late, like a whip', 'linen cloth stretched over the ribs'],
+    story: [
+      ['Sketched by Leonardo, around 1488', 'CODEX ATLANTICUS · FOLIO 846 VERSO'],
+      ['Built from the drawing', 'WALNUT · LINEN · BRASS'],
+      ['Twenty-five parts, exploded', 'HE DREW EXPLODED VIEWS 500 YEARS AGO'],
+      ['Muscle-powered. Wings that fold.', 'CRANK → ROCKER ARM → THREE-JOINT WINGS'],
+    ],
+    sys: {
+      spar: ['PRIMARY WING SPAR', 'omero', 'One stout spar, like a bat\'s upper arm, carries the whole load of the beat.', 'Leonardo studied bird and bat wings to proportion these wooden "bones".'],
+      fore: ['MID WING · RADIUS & ULNA', 'radio e ulna', 'Twin rods work like a forearm: the elbow folds on the upstroke and straightens on the downstroke.', 'It follows the shoulder a little late, which is what makes the wing ripple.'],
+      fingers: ['WINGTIP FINGERS', 'dita', 'Tapered battens fan out like a bat\'s fingers to spread the cloth.', 'The tip arrives last and twists, spilling air on the way up and gripping it on the way down.'],
+      membrane: ['LINEN MEMBRANE', 'tela di lino', 'Light cloth stretched tight over the ribs — Leonardo\'s notes call for linen or starched taffeta.', 'It had to be airtight enough to press on the air, yet light enough for one man to lift.'],
+      drive: ['PULLEY CAM & HAND CRANK', 'manovella', 'Turning the cranks spins a pulley whose off-centre pin pushes a rod up and down.', 'This is how round-and-round arm power becomes a straight wing stroke.'],
+      rocker: ['ROCKER ARM & LIFT RODS', 'bilanciere', 'A see-saw beam on top of the pylon passes the stroke to both wings at once.', 'Two thin rods tie its nose to the wing spars, so the wings must move together.'],
+      treadle: ['FOOT TREADLE', 'staffa', 'The pilot lay face-down and pushed these stirrups with both legs — his strongest muscles.', 'Cords carry the push up to the rear of the rocker arm.'],
+      hull: ['HULL CRADLE', 'scafo', 'A boat-like cradle of bent ribs, built light like a skiff.', 'The pilot lies prone on the centre plank, hands on the crank, feet in the stirrups.'],
+      mast: ['PYLON', 'castello', 'An A-frame lifts the wing hinges and the rocker pivot above the pilot.', 'Every flight load in the machine meets at this one frame.'],
+      tail: ['TAIL RUDDER', 'coda', 'A fan of linen on wooden rays, modelled on the tails of the kites Leonardo watched.', 'It nods with each beat to keep the nose level.'],
+    },
+  }),
+  cart: buildMachine({
+    id: 'cart', seed: 11, defs: cartDefs(), kin: cartKin, fitK: [0.86, 0.98], storyK: 3.2, az0: 0.75,
+    name: 'The Self-Propelled Cart', sub: 'Leonardo da Vinci · Codex Atlanticus, f. 812r · c. 1478',
+    mirrorIt: 'carro che si move per forza di molle', mirrorEn: 'a cart that moves by the force of springs',
+    notesIt: ['questa carretta si move per forza di molle', 'e la molla tira la rota dentata', 'la quale volta il rocchetto e l asse', 'el bilanciere tempera il moto'],
+    notesEn: ['this cart moves by the force of springs', 'and the spring pulls the toothed wheel', 'which turns the pinion and the axle', 'the balance tempers the motion'],
+    story: [
+      ['Sketched by Leonardo, around 1478', 'CODEX ATLANTICUS · FOLIO 812 RECTO'],
+      ['Built from the drawing', 'WOOD · IRON · BRASS'],
+      ['Twenty parts, exploded', 'HE DREW EXPLODED VIEWS 500 YEARS AGO'],
+      ['Spring-powered. No horse.', 'COILED SPRINGS → CROWN GEARS → AXLE'],
+    ],
+    sys: {
+      frame: ['FRAME', 'telaio', 'A square timber chassis carries the whole mechanism.', 'It was most likely meant for court pageants and stage effects, not for travel.'],
+      wheels: ['DRIVE WHEELS & AXLE', 'ruota', 'Each rear wheel has its own gear train, so the two can be driven independently.', 'Cleats on the rims give the wooden wheels some grip.'],
+      steer: ['PROGRAMMABLE STEERING', 'camma', 'Pegs set in a turning cam nudge the tiller as the cart rolls.', 'Move the pegs and you change the route in advance — a programme made of wood.'],
+      gears: ['CROWN GEARS & LANTERN PINIONS', 'ruota dentata', 'Peg-toothed crown gears turn cage-like lantern pinions on the axle.', 'Wooden pegs were easy to carve, and easy to replace when they wore out.'],
+      springs: ['COILED SPRINGS', 'molla', 'Two clock-style springs wound inside these drums are the real motor.', 'That was only worked out in the late 1990s; a working replica followed in 2004.'],
+      bows: ['LEAF SPRINGS', 'balestra', 'These crossbow-like springs were long mistaken for the engine.', 'They are now read as regulators that keep the drive steady.'],
+      regulator: ['BALANCE', 'bilanciere', 'A swinging balance checks the gear train tooth by tooth, like a clock escapement.', 'It lets the springs unwind evenly instead of all at once.'],
+      gantry: ['GANTRY', 'castello', 'A light timber frame holds the upright shafts true above the gears.', 'Without it the crown gears would wander out of mesh.'],
+    },
+  }),
+};
+const allParts = [...MACHINES.orni.parts, ...MACHINES.cart.parts];
+let mc = MACHINES.orni;
+
+/* ---------- Procedural audio: no files, everything synthesised from noise and oscillators ---------- */
+const Snd = (() => {
+  let ctx = null, master = null, white = null, pink = null;
+  const last = {};
+  const api = { on: false };
+  function noiseBuf(isPink) {
+    const n = ctx.sampleRate * 2, buf = ctx.createBuffer(1, n, ctx.sampleRate), d = buf.getChannelData(0);
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+    for (let i = 0; i < n; i++) {
+      const w = Math.random() * 2 - 1;
+      if (!isPink) { d[i] = w; continue; }
+      b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759; b2 = 0.969 * b2 + w * 0.153852;
+      b3 = 0.8665 * b3 + w * 0.3104856; b4 = 0.55 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.016898;
+      d[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11; b6 = w * 0.115926;
+    }
+    return buf;
+  }
+  function init() {
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctx.createGain(); master.gain.value = 0;
+    const comp = ctx.createDynamicsCompressor();
+    master.connect(comp); comp.connect(ctx.destination);
+    white = noiseBuf(false); pink = noiseBuf(true);
+  }
+  const gate = (k, gap) => { const t = ctx.currentTime; if (t - (last[k] || -1) < gap) return false; last[k] = t; return true; };
+  // filtered noise burst; f may be [[freq, time], ...] for a sweep
+  function burst(buf, type, f, q, dur, gain, attack = 0.003) {
+    const t = ctx.currentTime, src = ctx.createBufferSource(), fl = ctx.createBiquadFilter(), g = ctx.createGain();
+    src.buffer = buf; src.loop = true;
+    fl.type = type; fl.Q.value = q;
+    if (Array.isArray(f)) { fl.frequency.setValueAtTime(f[0][0], t); f.slice(1).forEach(([hz, at]) => fl.frequency.linearRampToValueAtTime(hz, t + at)); }
+    else fl.frequency.value = f;
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(gain, t + attack); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    src.connect(fl); fl.connect(g); g.connect(master);
+    src.start(t, Math.random() * 1.5); src.stop(t + dur + 0.05);
+  }
+  function tone(type, f0, f1, dur, gain) {
+    const t = ctx.currentTime, o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+    g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(master); o.start(t); o.stop(t + dur + 0.02);
+  }
+  const R = (a, b) => a + Math.random() * (b - a);
+  api.toggle = () => {
+    if (!ctx) init();
+    api.on = !api.on;
+    if (api.on) ctx.resume();
+    master.gain.setTargetAtTime(api.on ? 0.7 : 0, ctx.currentTime, 0.05);
+    return api.on;
+  };
+  const ok = (k, gap) => api.on && ctx && gate(k, gap);
+  // quill scratching on rough paper
+  api.quill = () => { if (!ok('quill', 0.05)) return; const f = R(2200, 5200); burst(pink, 'bandpass', [[f, 0], [f * R(0.7, 1.35), 0.12]], 1.4, R(0.05, 0.16), R(0.10, 0.22), 0.012); };
+  // wooden thud when a part seats; lighter clack when it pops free
+  api.thud = (k = 1) => { if (!ok('thud', 0.035)) return; burst(white, 'lowpass', R(190, 420), 7, 0.14, 0.5 * k); tone('sine', R(150, 190), 62, 0.11, 0.35 * k); };
+  api.clack = () => { if (!ok('clack', 0.04)) return; burst(white, 'bandpass', R(800, 1500), 5, 0.045, 0.22); };
+  // ornithopter: ratchet pawl + canvas pushing air
+  api.ratchet = () => { if (!ok('ratchet', 0.03)) return; burst(white, 'bandpass', R(2000, 2500), 9, 0.022, 0.16, 0.001); tone('triangle', 1150, 700, 0.018, 0.05); };
+  api.whoosh = (k = 1) => { if (!ok('whoosh', 0.18)) return; burst(white, 'bandpass', [[260, 0], [820, 0.17], [230, 0.55]], 0.9, 0.6, 0.34 * k, 0.16); burst(pink, 'lowpass', 180, 0.7, 0.5, 0.25 * k, 0.14); };
+  // cart: clockwork escapement
+  api.tick = (tock) => { if (!ok('tick', 0.04)) return; burst(white, 'bandpass', tock ? 1700 : 2500, 14, 0.035, 0.34, 0.001); tone('square', tock ? 820 : 1240, tock ? 600 : 900, 0.014, 0.04); };
+  api.tooth = () => { if (!ok('tooth', 0.03)) return; burst(white, 'bandpass', 3400, 10, 0.015, 0.07, 0.001); };
+  return api;
+})();
+
+/* ---------- Cinematic presets: each returns a full render state for time T ---------- */
+function revealAt(T, MAXT) {
+  if (T < 0.3) return 0;
+  if (T < 5.3) return ((T - 0.3) / 5.0) * MAXT;
+  if (T < 18.9) return MAXT + 1;
+  return MAXT * (1 - ss(18.9, 19.8, T));
+}
+function explodeAt(T) {
+  if (T < 8.0) return 0;
+  if (T < 10.0) return (T - 8.0) / 2.0;
+  if (T < 11.6) return 1;
+  if (T < 13.2) return 1 - (T - 11.6) / 1.6;
+  return 0;
+}
+const run = (T) => ss(13.0, 13.9, T) * (1 - ss(16.9, 17.6, T));
+function runPhase(T) { // integral of run() — deterministic for scrubbing
+  let p = 0; const end = Math.min(T, 17.6);
+  for (let t = 13.0; t < end; t += 0.02) p += run(t) * Math.min(0.02, end - t);
+  return p;
+}
+const win = (a, b, c, d, T) => ss(a, b, T) * (1 - ss(c, d, T));
+const LINKAGE = ['drive', 'rocker', 'spar', 'fore', 'fingers'];
+const PRESETS = {
+  story: {
+    dur: 20,
+    captions: (m) => [[0.7, 5.6], [6.2, 7.9], [8.6, 12.4], [13.4, 17.4]].map(([a, b], i) => ({ a, b, text: m.story[i][0], sub: m.story[i][1] })),
+    state(T, m) {
+      const e = explodeAt(T), ph = (TAU * T) / 20;
+      return {
+        reveal: revealAt(T, m.MAXT), hatch: win(5.2, 6.4, 18.0, 18.9, T), solid: win(6.4, 7.8, 17.6, 18.5, T), splitX: -0.06,
+        e, phase: runPhase(T) * m.storyK, run: run(T),
+        mirror: win(10.3, 11.0, 12.5, 13.0, T), labels: ss(0.55, 0.95, eio(e)), notes: 0.30 * win(0.4, 2.6, 18.6, 19.6, T),
+        az: reduceMotion ? m.az0 : m.az0 + ph - 0.8 * Math.sin(ph), el: 0.36 + (reduceMotion ? 0 : 0.07 * Math.sin(ph * 2)), zoom: 1, focus: null, dim: 0,
+      };
+    },
+  },
+  // Hook-first 15 s loop: flying half-ink/half-timber → burst apart → ink blueprint → snap shut → timber wipe + mirror flip → back to the hook
+  viral: {
+    dur: 15, machine: 'orni',
+    captions: () => [
+      { a: 0.15, b: 1.9, text: 'Leonardo drew this flying machine in 1488', sub: 'CODEX ATLANTICUS · FOLIO 846 VERSO' },
+      { a: 2.5, b: 5.6, text: 'Twenty-five parts, back to ink', sub: 'EVERY LINE IS GENERATED IN CODE' },
+      { a: 6.4, b: 10.6, text: 'He wrote his notes in mirror script', sub: 'HOLD UP A MIRROR TO READ THEM' },
+      { a: 11.4, b: 14.6, text: 'Wings that ripple, not flap', sub: 'SHOULDER → ELBOW → WRIST, EACH A LITTLE LATE' },
+    ],
+    state(T) {
+      let e = 0;
+      if (T >= 1.2 && T < 1.9) e = 1 - Math.pow(1 - (T - 1.2) / 0.7, 3);
+      else if (T >= 1.9 && T < 4.7) e = 1;
+      else if (T >= 4.7 && T < 5.5) e = 1 - Math.pow((T - 4.7) / 0.8, 3);
+      let sx = 0.5;
+      if (T >= 2.0) sx = lerp(0.5, 1.06, eio(clamp((T - 2.0) / 2.0)));
+      if (T >= 6.0) sx = lerp(1.06, -0.06, eio(clamp((T - 6.0) / 2.0)));
+      if (T >= 12.4) sx = lerp(-0.06, 0.5, eio(clamp((T - 12.4) / 2.0)));
+      return {
+        reveal: 1e6, hatch: 1, solid: 1, splitX: sx, e, phase: (TAU * 10 * T) / 15, run: 1,
+        mirror: win(7.6, 8.4, 11.0, 11.8, T),
+        labels: Math.max(win(1.45, 1.85, 4.5, 4.9, T), win(7.2, 7.8, 10.8, 11.4, T)), notes: 0.3,
+        az: -0.73 + (TAU * T) / 15 - 0.35 * Math.sin((TAU * T) / 15), el: 0.34 + 0.08 * Math.sin((2 * TAU * T) / 15),
+        zoom: 0.94, focus: LINKAGE, dim: win(8.6, 9.2, 10.5, 11.1, T),
+      };
+    },
+  },
+};
+
+/* ---------- App state ---------- */
+const STYLE_X = { ink: 1.06, half: 0.5, solid: -0.06 };
+const OMEGA0 = 3.2, OMEGA_MAX = 11;
+const wb = {
+  style: 'half', split: 0.5, e: 0, eGoal: 0, phase: 0, omega: reduceMotion ? 0 : OMEGA0, auto: !reduceMotion,
+  revealT: 0, az: 0.95, el: 0.34, zoom: 1, lastTouch: -1e9, azTo: null,
+  sel: null, selPart: null, dim: 0, space: false, dragCrank: false,
+  tgt: new THREE.Vector3(), dist: 0, camInit: false,
+};
+let mode = 'wb', preset = 'story', T = 0, playing = true;
+let mirrorOn = false, mirrorHover = false, mirrorV = 0;
+let userAz = 0, userEl = 0, userZoom = 1;
+let aspectMode = 'full';
+
+/* ---------- Camera ---------- */
+const camTgt = new THREE.Vector3();
+function baseDist(R) {
+  const vf = THREE.MathUtils.degToRad(camera.fov) / 2, hf = Math.atan(Math.tan(vf) * camera.aspect);
+  return R / Math.sin(Math.min(vf, hf * (camera.aspect < 1 ? 1.3 : 1))); // portrait: let the wingtips run off the page a little
+}
+function placeCamera(az, el, tgt, dist) {
+  camera.position.set(tgt.x + dist * Math.cos(el) * Math.cos(az), tgt.y + dist * Math.sin(el), tgt.z + dist * Math.cos(el) * Math.sin(az));
+  camera.lookAt(tgt);
+  camera.updateMatrixWorld();
+}
+
+/* ---------- Overlay: mirror-script notes, part labels, split line ---------- */
+const tmp = new THREE.Vector3();
+const FONT_B = '"IM Fell English", Palatino, Georgia, serif', FONT_D = '"IM Fell English SC", Palatino, Georgia, serif';
+// Text that reads mirrored at m=0 and flips (like a card turning about its vertical axis) to plain English at m=1
+function flipText(it, en, cxFor, y, m, font, fill) {
+  const txt = m > 0.5 ? en : it;
+  octx.font = font;
+  const tw = octx.measureText(txt).width;
+  octx.save();
+  octx.translate(cxFor(tw), y);
+  octx.scale(-Math.cos(m * Math.PI) || 0.0001, 1);
+  octx.textAlign = 'center';
+  octx.lineJoin = 'round'; octx.lineWidth = parseFloat(font.match(/([\d.]+)px/)[1]) * 0.3; octx.strokeStyle = 'rgba(236,222,193,0.6)';
+  octx.strokeText(txt, 0, 0); // paper-coloured halo keeps the writing legible over the drawing
+  octx.fillStyle = fill;
+  octx.fillText(txt, 0, 0);
+  octx.restore();
+}
+function drawOverlay(S, m) {
+  const w = ov.width, h = ov.height, dpr = shared.uDpr.value, s = Math.min(w, h) / 100;
+  octx.clearRect(0, 0, w, h);
+  const ink = 'rgba(59,38,20,';
+
+  // where ink meets timber
+  if (S.solid > 0.5 && S.splitX > 0.004 && S.splitX < 0.996) {
+    const x = Math.round(S.splitX * w) + 0.5;
+    octx.save();
+    octx.strokeStyle = 'rgba(140,59,34,0.55)'; octx.lineWidth = 1.2 * dpr; octx.setLineDash([1.2 * s, 0.9 * s]);
+    octx.beginPath(); octx.moveTo(x, 0); octx.lineTo(x, h); octx.stroke();
+    octx.restore();
+  }
+
+  // margin notes
+  if (S.notes > 0.001) {
+    const rightX = w - 5 * s, font = `italic ${2.3 * s}px ${FONT_B}`;
+    mc.notesIt.forEach((t, i) => {
+      const mi = clamp(m * 1.3 - i * 0.1);
+      octx.save();
+      octx.translate(rightX, h * 0.2 + i * 3.4 * s + (document.body.classList.contains('ui-over') ? 4 * s : 0));
+      octx.rotate(-0.025);
+      flipText(t, mc.notesEn[i], (tw) => -tw / 2, 0, mi, font, ink + (S.notes * (1 + 1.1 * mi)).toFixed(3) + ')');
+      octx.restore();
+    });
+  }
+
+  // callout labels
+  if (S.labels < 0.01) return;
+  const cx = w / 2, cy = h / 2, items = [];
+  mc.parts.forEach((p, i) => {
+    if (!p.it) return;
+    const a = S.labels * (1 - 0.8 * p.dimU.value);
+    if (a < 0.01) return;
+    p.group.localToWorld(tmp.copy(p.anchorV)).project(camera);
+    if (tmp.z > 1) return;
+    const x = (tmp.x * 0.5 + 0.5) * w, y = (-tmp.y * 0.5 + 0.5) * h;
+    let dx = x - cx, dy = y - cy; const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+    const right = (dx || 1) >= 0;
+    items.push({ p, i, a, x, y, dx, dy, right, lx: x + (right ? 1 : -1) * 7 * s, ly: y + dy * 2.5 * s });
+  });
+  // keep callouts on the same side from stacking on top of each other
+  [true, false].forEach((side) => {
+    const col = items.filter((it) => it.right === side).sort((a, b) => a.ly - b.ly);
+    for (let k = 1; k < col.length; k++) if (col[k].ly < col[k - 1].ly + 5.4 * s) col[k].ly = col[k - 1].ly + 5.4 * s;
+  });
+  items.forEach(({ p, i, a, x, y, dx, dy, right, lx, ly }) => {
+    octx.save();
+    octx.globalAlpha = a;
+    octx.strokeStyle = ink + '0.85)';
+    octx.lineWidth = 1.1 * dpr;
+    octx.beginPath(); octx.arc(x, y, 0.45 * s, 0, Math.PI * 2); octx.stroke();
+    octx.beginPath(); octx.moveTo(x + (right ? 0.5 : -0.5) * s, y); octx.lineTo(lx, ly); octx.stroke();
+    const mi = clamp(m * 1.25 - (i % 5) * 0.06);
+    const edge = right ? lx + 0.8 * s : lx - 0.8 * s;
+    const cxFor = (tw) => (right ? edge + tw / 2 : edge - tw / 2);
+    flipText(p.it, p.en, cxFor, ly - 0.2 * s, mi, `italic ${2.5 * s}px ${FONT_B}`, ink + '0.95)');
+    flipText(p.itSub, p.enSub.toUpperCase(), cxFor, ly + 1.9 * s, mi, mi > 0.5 ? `${1.45 * s}px ${FONT_D}` : `italic ${1.7 * s}px ${FONT_B}`, 'rgba(140,59,34,0.95)');
+    octx.restore();
+  });
+}
+
+/* ---------- Frame / resize ---------- */
+const lineMats = allParts.map((p) => p.lineMat);
+function resize() {
+  const W = window.innerWidth, H = window.innerHeight;
+  const clean = document.body.classList.contains('clean');
+  const th = clean ? 0 : $('top').getBoundingClientRect().bottom, bh = clean ? 0 : H - $('bar').getBoundingClientRect().top;
+  let w = W, h = H, l = 0, t = 0;
+  if (aspectMode !== 'full') {
+    const [aw, ah] = aspectMode.split(':').map(Number);
+    const availW = W - 32, availH = H - th - bh - 24;
+    const k = Math.max(40 / Math.min(aw, ah), Math.min(availW / aw, availH / ah));
+    w = Math.floor(aw * k); h = Math.floor(ah * k);
+    l = Math.floor((W - w) / 2); t = Math.floor(th + 12 + (availH - h) / 2);
+  }
+  Object.assign(stage.style, { left: l + 'px', top: t + 'px', width: w + 'px', height: h + 'px' });
+  stage.style.setProperty('--s', (Math.min(w, h) / 100) + 'px');
+  document.body.style.setProperty('--toph', th + 'px');
+  document.body.style.setProperty('--barh', bh + 'px');
+  document.body.classList.toggle('ui-over', aspectMode === 'full' && !clean);
+  renderer.setSize(w, h, false);
+  const dpr = renderer.getPixelRatio();
+  shared.uRes.value.set(w * dpr, h * dpr);
+  shared.uDpr.value = dpr;
+  const lw = Math.max(1.2, Math.min(w, h) / 560);
+  lineMats.forEach((lm) => { lm.resolution.set(w, h); lm.linewidth = lw; });
+  ov.width = Math.round(w * dpr); ov.height = Math.round(h * dpr);
+  camera.aspect = w / h;
+  if (aspectMode === 'full' && !clean) camera.setViewOffset(w, h, 0, Math.round((bh - th) * 0.42), w, h); else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+
+/* ---------- Render one state ---------- */
+const prev = { reveal: 0, splitX: 0.5, phase: 0, mc: null };
+let nextQuill = 0, lastMirrorTxt = '';
+function render(S, quiet) {
+  const m = Math.max(S.mirror, mirrorV);
+  shared.uHatch.value = S.hatch; shared.uSolid.value = S.solid; shared.uSplitX.value = S.splitX;
+  const dash = Math.max(0.00001, S.reveal), op = 0.95 - 0.12 * S.solid;
+  mc.parts.forEach((p) => {
+    p.dimU.value = S.focus ? S.dim * (S.focus.includes(p.sys) ? 0 : 1) : 0;
+    p.lineMat.dashSize = dash;
+    p.lineMat.opacity = op * (1 - 0.7 * p.dimU.value);
+    p.surf.visible = S.reveal > p.start + (p.end - p.start) * 0.45;
+  });
+  const wasEi = quiet ? null : mc.parts.map((p) => p.ei);
+  pose(mc, S);
+  placeCamera(S.az, S.el, S.tgt, S.dist);
+  renderer.render(scene, camera);
+  drawOverlay(S, m);
+
+  // title line in mirror script
+  const mt = m > 0.5 ? mc.mirrorEn : mc.mirrorIt;
+  if (mt !== lastMirrorTxt) { $('tMirror').textContent = mt; lastMirrorTxt = mt; }
+  $('tMirror').style.transform = `scaleX(${(-Math.cos(m * Math.PI)).toFixed(3)})`;
+
+  // sound, synced to what just happened on screen
+  if (!quiet && Snd.on && prev.mc === mc) {
+    const now = performance.now();
+    const sketching = (S.reveal > prev.reveal + 1e-4 && S.reveal < mc.MAXT) || (S.solid > 0.5 && S.splitX > prev.splitX + 0.0015 && S.splitX < 1.04);
+    if (sketching && now > nextQuill) { Snd.quill(); nextQuill = now + 55 + Math.random() * 130; }
+    mc.parts.forEach((p, i) => {
+      if (wasEi[i] < 0.03 && p.ei >= 0.03) Snd.clack();
+      else if (wasEi[i] > 0.03 && p.ei <= 0.03) Snd.thud(0.6 + Math.random() * 0.5);
+    });
+    const dph = S.phase - prev.phase, cross = (f) => Math.floor(f(S.phase)) !== Math.floor(f(prev.phase));
+    if (dph !== 0 && Math.abs(dph) < 1.2 && S.reveal > mc.MAXT) {
+      if (mc.id === 'orni') {
+        if (cross((x) => (x - Math.PI) / TAU)) Snd.whoosh(clamp(Math.abs(dph) * 60 / OMEGA0, 0.35, 1.5));   // peak downstroke speed
+        if (cross((x) => x / (TAU / 8))) Snd.ratchet();
+      } else {
+        if (cross((x) => x / Math.PI + 0.5)) Snd.tick(Math.floor(S.phase / Math.PI + 0.5) & 1);              // balance reverses
+        if (cross((x) => (x * CART_K * 1.05) / (TAU / 20))) Snd.tooth();                                    // one crown-gear peg passes
+      }
+    }
+  }
+  prev.reveal = S.reveal; prev.splitX = S.splitX; prev.phase = S.phase; prev.mc = mc;
+}
+function camFor(S) { // cinematic: camera straight from the timeline
+  const eG = eio(clamp(S.e));
+  S.tgt = camTgt.copy(mc.fitA.c).lerp(mc.fitE.c, eG);
+  S.dist = baseDist(lerp(mc.fitA.r, mc.fitE.r, eG)) * S.zoom * userZoom;
+  S.az += userAz; S.el = clamp(S.el + userEl, -0.2, 1.35);
+  return S;
+}
+function renderCine(quiet) {
+  const P = PRESETS[preset];
+  render(camFor(P.state(T, mc)), quiet);
+  let html = '', op = 0;
+  for (const c of P.captions(mc)) {
+    if (T >= c.a - 0.5 && T <= c.b + 0.5) { op = ss(c.a - 0.5, c.a, T) * (1 - ss(c.b, c.b + 0.5, T)); html = `${c.text}<small>${c.sub}</small>`; }
+  }
+  if (capEl.innerHTML !== html) capEl.innerHTML = html;
+  capEl.style.opacity = op.toFixed(3);
+}
+
+/* ---------- Workbench: live state driven by the visitor ---------- */
+const focusPt = new THREE.Vector3();
+function stepWorkbench(dt, now) {
+  // flywheel: pumping adds speed, friction bleeds it off, auto-drive holds a steady beat
+  if (!wb.dragCrank) {
+    if (wb.space) wb.omega = Math.min(OMEGA_MAX, wb.omega + 9 * dt);
+    else if (wb.auto) wb.omega += (OMEGA0 - wb.omega) * (1 - Math.exp(-dt / 0.9));
+    else wb.omega *= Math.exp(-dt / 2.4);
+    if (Math.abs(wb.omega) < 0.01) wb.omega = 0;
+    wb.phase += wb.omega * dt;
+  }
+  wb.e += (wb.eGoal - wb.e) * (1 - Math.exp(-dt * 8));
+  const d = STYLE_X[wb.style] - wb.split;
+  wb.split += Math.sign(d) * Math.min(Math.abs(d), dt * 1.5);
+  if (wb.revealT < 1) wb.revealT = Math.min(1, wb.revealT + dt / (reduceMotion ? 0.01 : 2.2));
+  wb.dim += ((wb.sel ? 1 : 0) - wb.dim) * (1 - Math.exp(-dt * 7));
+  if (!wb.sel && wb.dim < 0.01) { wb.dim = 0; wb.focus = null; }
+
+  // camera: slow idle drift, user orbit, or a glide toward the inspected part
+  const eG = eio(clamp(wb.e));
+  if (wb.azTo !== null) { wb.az += (wb.azTo - wb.az) * (1 - Math.exp(-dt * 3.2)); if (Math.abs(wb.azTo - wb.az) < 0.003) wb.azTo = null; }
+  else if (!reduceMotion && !wb.sel && now - wb.lastTouch > 5000) wb.az += 0.1 * dt;
+  const tgtGoal = tmp.copy(mc.fitA.c).lerp(mc.fitE.c, eG);
+  let distGoal = baseDist(lerp(mc.fitA.r, mc.fitE.r, eG)) * wb.zoom;
+  if (wb.sel && wb.selPart) {
+    const p = wb.selPart;
+    focusPt.copy(p.base).addScaledVector(p.off, p.ei).add(p.anchorV);
+    tgtGoal.lerp(focusPt, 0.72); distGoal *= 0.6;
+  }
+  const k = wb.camInit ? 1 - Math.exp(-dt * 4) : 1; wb.camInit = true;
+  wb.tgt.lerp(tgtGoal, k); wb.dist += (distGoal - wb.dist) * k;
+
+  $('crankArm').style.transform = `rotate(${(wb.phase % TAU).toFixed(3)}rad)`;
+  const rpm = Math.round(Math.abs(wb.omega) / TAU * 60);
+  if ($('rpm').textContent !== String(rpm)) { $('rpm').textContent = rpm; $('crank').setAttribute('aria-valuenow', rpm); }
+
+  return {
+    reveal: wb.revealT < 1 ? wb.revealT * mc.MAXT : 1e6, hatch: 1, solid: 1, splitX: wb.split,
+    e: wb.e, phase: wb.phase, run: clamp(Math.abs(wb.omega) / 1.5), mirror: 0,
+    labels: ss(0.55, 0.95, eG), notes: 0.3, focus: wb.focus, dim: wb.dim,
+    az: wb.az, el: wb.el, tgt: wb.tgt, dist: wb.dist,
+  };
+}
+function placeTip() {
+  if (!wb.sel || !wb.selPart) return;
+  const r = stage.getBoundingClientRect();
+  tmp.copy(focusPt).project(camera);
+  const x = (tmp.x * 0.5 + 0.5) * r.width, y = (-tmp.y * 0.5 + 0.5) * r.height;
+  const tw = tipEl.offsetWidth, th = tipEl.offsetHeight;
+  const left = x + 30 + tw > r.width - 8 ? x - 30 - tw : x + 30;
+  const top = clamp(y - th / 2, parseFloat(getComputedStyle(document.body).getPropertyValue('--toph')) * (aspectMode === 'full' ? 1 : 0) + 8, r.height - th - 8);
+  tipEl.style.transform = `translate(${Math.round(clamp(left, 8, r.width - tw - 8))}px, ${Math.round(top)}px)`;
+}
+function select(p) {
+  if (!p) { wb.sel = null; tipEl.classList.remove('on'); return; }
+  const info = mc.sys[p.sys];
+  wb.sel = p.sys; wb.selPart = p; wb.focus = [p.sys];
+  tipEl.innerHTML = `<b>${info[0]}</b><i>${info[1]}</i><p>${info[2]}</p><p>${info[3]}</p>`;
+  tipEl.classList.add('on');
+  // swing round to the side the part is on
+  const c = mc.fitA.c, dx = p.base.x + p.anchorV.x - c.x, dz = p.base.z + p.anchorV.z - c.z;
+  if (Math.hypot(dx, dz) > 0.3) {
+    // stop about 55° off the part's own direction, on whichever side is nearer, so it is seen three-quarter on
+    const near = (to) => { while (to - wb.az > Math.PI) to -= TAU; while (to - wb.az < -Math.PI) to += TAU; return to; };
+    const a = near(Math.atan2(dz, dx) + 0.95), b = near(Math.atan2(dz, dx) - 0.95);
+    wb.azTo = Math.abs(a - wb.az) < Math.abs(b - wb.az) ? a : b;
+  }
+  wb.el += (0.42 - wb.el) * 0.5;
+}
+
+/* ---------- Main loop ---------- */
+const scrub = $('scrub'), timeEl = $('time'), playBtn = $('play');
+let last = performance.now(), scrubbing = false;
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  mirrorV += ((mirrorOn || mirrorHover ? 1 : 0) - mirrorV) * (1 - Math.exp(-dt * 6));
+  if (mode === 'wb') {
+    render(stepWorkbench(dt, now), false);
+    placeTip();
+  } else {
+    const dur = PRESETS[preset].dur;
+    if (playing) T = (T + dt) % dur;
+    renderCine(!playing);
+    if (!scrubbing) scrub.value = Math.round((T / dur) * 1000);
+    timeEl.textContent = T.toFixed(1) + 's';
+  }
+  requestAnimationFrame(frame);
+}
+
+/* ---------- Switching ---------- */
+function press(sel, match) { document.querySelectorAll(sel).forEach((b) => b.setAttribute('aria-pressed', String(match(b)))); }
+let toastTimer = 0;
+function toast(msg) { toastEl.textContent = msg; toastEl.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('on'), 2600); }
+function setMachine(id, redraw = true) {
+  mc = MACHINES[id];
+  Object.values(MACHINES).forEach((m) => { m.root.visible = m === mc; });
+  $('tName').textContent = mc.name; $('tSub').textContent = mc.sub;
+  press('[data-m]', (b) => b.dataset.m === id);
+  select(null); wb.dim = 0; wb.focus = null; wb.camInit = false; wb.az = mc.az0; wb.azTo = null;
+  if (redraw) wb.revealT = 0;
+  if (mode === 'cine' && PRESETS[preset].machine && PRESETS[preset].machine !== id) setPreset('story');
+}
+function setMode(m) {
+  mode = m; document.body.dataset.mode = m;
+  press('button[data-mode]', (b) => b.dataset.mode === m);
+  select(null); wb.dim = 0; wb.focus = null;
+  capEl.style.opacity = 0;
+  if (m === 'cine') { T = 0; setPlaying(true); userAz = userEl = 0; userZoom = 1; if (PRESETS[preset].machine) setMachine(PRESETS[preset].machine, false); }
+  else { wb.revealT = 1; wb.camInit = false; }
+  $('hint').classList.toggle('off', m !== 'wb');
+  resize();
+}
+function setPreset(p) {
+  preset = p; T = 0;
+  press('[data-preset]', (b) => b.dataset.preset === p);
+  if (PRESETS[p].machine && mc.id !== PRESETS[p].machine) setMachine(PRESETS[p].machine, false);
+  setPlaying(true);
+}
+function setStyle(s) { wb.style = s; press('[data-style]', (b) => b.dataset.style === s); }
+function setPlaying(v) { playing = v; playBtn.textContent = v ? 'Pause' : 'Play'; }
+function setMirror(v) { mirrorOn = v; $('mirrorBtn').setAttribute('aria-pressed', String(v)); }
+function setExplode(pct) { wb.eGoal = pct / 100; $('explode').value = pct; $('exOut').textContent = Math.round(pct) + '%'; }
+function toggleClean() { document.body.classList.toggle('clean'); resize(); }
+
+/* ---------- Interaction ---------- */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function pick(ev) {
+  const r = stage.getBoundingClientRect();
+  ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const meshes = [];
+  mc.parts.forEach((p) => { if (p.surf.visible) meshes.push(...p.surf.children); });
+  const hit = ray.intersectObjects(meshes, false)[0];
+  return hit ? hit.object.userData.part : null;
+}
+let dragging = false, px = 0, py = 0, moved = 0, lastHover = 0;
+stage.addEventListener('pointerdown', (ev) => { dragging = true; moved = 0; px = ev.clientX; py = ev.clientY; stage.setPointerCapture(ev.pointerId); stage.classList.add('dragging'); });
+stage.addEventListener('pointermove', (ev) => {
+  if (!dragging) {
+    if (mode === 'wb' && ev.pointerType === 'mouse' && performance.now() - lastHover > 90) { lastHover = performance.now(); stage.classList.toggle('pickable', !!pick(ev)); }
+    return;
+  }
+  const dx = ev.clientX - px, dy = ev.clientY - py;
+  moved += Math.abs(dx) + Math.abs(dy);
+  if (mode === 'wb') {
+    wb.az += dx * 0.008; wb.el = clamp(wb.el + dy * 0.005, -0.2, 1.3); wb.azTo = null; wb.lastTouch = performance.now();
+  } else {
+    userAz += dx * 0.008; userEl = clamp(userEl + dy * 0.005, -0.55, 0.95);
+  }
+  px = ev.clientX; py = ev.clientY;
+});
+stage.addEventListener('pointerup', (ev) => {
+  stage.classList.remove('dragging');
+  if (dragging && moved < 6 && mode === 'wb') { select(pick(ev)); wb.lastTouch = performance.now(); }
+  dragging = false;
+});
+stage.addEventListener('pointercancel', () => { dragging = false; stage.classList.remove('dragging'); });
+stage.addEventListener('dblclick', () => { userAz = 0; userEl = 0; userZoom = 1; wb.zoom = 1; wb.el = 0.34; });
+function pump(deltaY) { wb.omega = clamp(wb.omega + clamp(Math.abs(deltaY), 0, 120) * 0.012 * (deltaY > 0 ? 1 : -1), -OMEGA_MAX, OMEGA_MAX); }
+stage.addEventListener('wheel', (ev) => {
+  ev.preventDefault();
+  if (mode === 'wb' && ev.shiftKey) { pump(ev.deltaY || ev.deltaX); return; }
+  const z = Math.exp(ev.deltaY * 0.001);
+  if (mode === 'wb') wb.zoom = clamp(wb.zoom * z, 0.4, 1.8); else userZoom = clamp(userZoom * z, 0.55, 1.8);
+}, { passive: false });
+
+// Brass crank: drag round it to turn the machine by hand, scroll over it to kick the flywheel
+const crank = $('crank');
+let crankAng = 0, crankT = 0;
+const angAt = (ev) => { const r = crank.getBoundingClientRect(); return Math.atan2(ev.clientX - (r.left + r.width / 2), -(ev.clientY - (r.top + r.height / 2))); };
+crank.addEventListener('pointerdown', (ev) => { wb.dragCrank = true; crankAng = angAt(ev); crankT = performance.now(); crank.setPointerCapture(ev.pointerId); ev.preventDefault(); });
+crank.addEventListener('pointermove', (ev) => {
+  if (!wb.dragCrank) return;
+  const a = angAt(ev), now = performance.now();
+  let d = a - crankAng; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU;
+  const dt = Math.max(0.004, (now - crankT) / 1000);
+  wb.phase += d;
+  wb.omega = clamp(lerp(wb.omega, d / dt, 0.35), -OMEGA_MAX, OMEGA_MAX);
+  crankAng = a; crankT = now;
+});
+const endCrank = () => { if (wb.dragCrank && performance.now() - crankT > 120) wb.omega = 0; wb.dragCrank = false; };
+crank.addEventListener('pointerup', endCrank);
+crank.addEventListener('pointercancel', endCrank);
+crank.addEventListener('wheel', (ev) => { ev.preventDefault(); pump(ev.deltaY); }, { passive: false });
+crank.addEventListener('keydown', (ev) => { if (ev.key === 'ArrowRight' || ev.key === 'ArrowUp') pump(60); if (ev.key === 'ArrowLeft' || ev.key === 'ArrowDown') pump(-60); });
+
+playBtn.addEventListener('click', () => setPlaying(!playing));
+scrub.addEventListener('input', () => { scrubbing = true; T = (scrub.value / 1000) * PRESETS[preset].dur * 0.9999; setPlaying(false); });
+scrub.addEventListener('change', () => { scrubbing = false; });
+$('explode').addEventListener('input', (ev) => setExplode(+ev.target.value));
+document.querySelectorAll('[data-m]').forEach((b) => b.addEventListener('click', () => setMachine(b.dataset.m)));
+document.querySelectorAll('button[data-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
+document.querySelectorAll('[data-style]').forEach((b) => b.addEventListener('click', () => setStyle(b.dataset.style)));
+document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => setPreset(b.dataset.preset)));
+document.querySelectorAll('[data-ar]').forEach((b) => b.addEventListener('click', () => { aspectMode = b.dataset.ar; press('[data-ar]', (x) => x === b); resize(); }));
+$('autoBtn').addEventListener('click', () => { wb.auto = !wb.auto; $('autoBtn').setAttribute('aria-pressed', String(wb.auto)); });
+const capBtn = $('capBtn');
+capBtn.addEventListener('click', () => { const off = document.body.classList.toggle('no-captions'); capBtn.setAttribute('aria-pressed', String(!off)); });
+$('cleanBtn').addEventListener('click', toggleClean);
+$('exitClean').addEventListener('click', toggleClean);
+let exitTimer = 0;
+window.addEventListener('pointermove', () => {
+  if (!document.body.classList.contains('clean')) return;
+  $('exitClean').classList.add('show'); clearTimeout(exitTimer); exitTimer = setTimeout(() => $('exitClean').classList.remove('show'), 1800);
+});
+const mirrorBtn = $('mirrorBtn');
+mirrorBtn.addEventListener('click', () => setMirror(!mirrorOn));
+mirrorBtn.addEventListener('pointerenter', (ev) => { if (ev.pointerType === 'mouse') mirrorHover = true; });
+mirrorBtn.addEventListener('pointerleave', () => { mirrorHover = false; });
+const sndBtn = $('sndBtn');
+sndBtn.addEventListener('click', () => { const on = Snd.toggle(); sndBtn.textContent = on ? '🔊 Sound: ON' : '🔇 Sound: OFF'; sndBtn.setAttribute('aria-pressed', String(on)); });
+const voteBtn = $('vote');
+let voted = false;
+try { voted = localStorage.getItem('codex-vote-screw') === '1'; } catch (e) { /* storage unavailable */ }
+const paintVote = () => { if (voted) voteBtn.innerHTML = '<small>III</small>✓ Aerial Screw<em>your vote is in</em>'; };
+paintVote();
+voteBtn.addEventListener('click', () => {
+  voted = true; try { localStorage.setItem('codex-vote-screw', '1'); } catch (e) { /* ignore */ }
+  paintVote(); toast('The Aerial Screw (Ms. B, f. 83v) is still on the drawing board — say so in the comments and it gets built next.');
+});
+
+window.addEventListener('keydown', (ev) => {
+  const inRange = ev.target instanceof HTMLInputElement;
+  if (ev.key === ' ') {
+    ev.preventDefault();
+    if (mode === 'wb') wb.space = true; else if (!ev.repeat) setPlaying(!playing);
+    return;
+  }
+  if (inRange || ev.metaKey || ev.ctrlKey) return;
+  const k = ev.key.toLowerCase();
+  if (k === 'h') toggleClean();
+  else if (k === 'escape') { if (document.body.classList.contains('clean')) toggleClean(); else select(null); }
+  else if (k === 'm') setMirror(!mirrorOn);
+  else if (k === 's') sndBtn.click();
+  else if (k === 'c') capBtn.click();
+  else if (k === '1') setStyle('ink'); else if (k === '2') setStyle('half'); else if (k === '3') setStyle('solid');
+  else if (mode === 'cine' && ev.key === 'ArrowRight') T = (T + 0.5) % PRESETS[preset].dur;
+  else if (mode === 'cine' && ev.key === 'ArrowLeft') T = (T - 0.5 + PRESETS[preset].dur) % PRESETS[preset].dur;
+});
+window.addEventListener('keyup', (ev) => { if (ev.key === ' ') wb.space = false; });
+window.addEventListener('blur', () => { wb.space = false; });
+
+/* ---------- Boot. URL hash sets a starting state, e.g. #mode=cine&preset=viral&ar=9:16&clean=1 ---------- */
+const q = new URLSearchParams(location.hash.slice(1));
+setMachine(q.get('m') === 'cart' ? 'cart' : 'orni');
+if (q.get('ar')) { aspectMode = q.get('ar'); press('[data-ar]', (b) => b.dataset.ar === aspectMode); }
+if (q.get('clean')) document.body.classList.add('clean');
+if (q.get('style') in STYLE_X) { setStyle(q.get('style')); wb.split = STYLE_X[wb.style]; }
+if (q.get('explode')) { setExplode(+q.get('explode')); wb.e = wb.eGoal; }
+if (q.get('mirror')) { setMirror(true); mirrorV = 1; }
+if (q.get('auto') === '0') { wb.auto = false; wb.omega = 0; $('autoBtn').setAttribute('aria-pressed', 'false'); }
+if (q.get('phase')) wb.phase = +q.get('phase');
+if (q.get('az')) wb.az = +q.get('az');
+if (reduceMotion) { wb.revealT = 1; $('autoBtn').setAttribute('aria-pressed', 'false'); }
+if (q.get('mode') === 'cine') { if (q.get('preset') === 'viral') setPreset('viral'); setMode('cine'); } else resize();
+if (q.get('t')) { T = +q.get('t'); setPlaying(false); wb.revealT = 1; }
+setTimeout(() => $('hint').classList.add('off'), 9000);
+// test / recording hooks
+window.__seek = (t) => { T = t; setPlaying(false); if (mode === 'cine') renderCine(true); };
+window.__codex = { wb, setMode, setPreset, setMachine, setStyle, setExplode, setMirror, select: (id) => select(mc.byId[id]), machines: MACHINES };
+document.fonts && document.fonts.ready.then(resize);
+requestAnimationFrame((n) => { last = n; frame(n); });
+</script>
+</body>
+</html>
