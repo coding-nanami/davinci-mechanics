@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>验收对比 · 第三轮：手机、桌面铜器、分界线</title>
+<style>
+  body { margin: 0; background: #17100a; color: #e9dcc0; font: 16px/1.65 -apple-system, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+  main { max-width: 1120px; margin: 0 auto; padding: 28px 16px 80px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 19px; margin: 44px 0 4px; color: #f1d9a0; }
+  p { margin: 4px 0 12px; color: rgba(233, 220, 192, 0.82); }
+  a { color: #f1d9a0; }
+  .tip { border: 1px solid rgba(201, 153, 74, 0.4); border-radius: 6px; padding: 12px 16px; margin: 16px 0 0; background: rgba(255, 230, 180, 0.04); }
+  .tip b { color: #f1d9a0; }
+  .tip ul { margin: 6px 0 0; padding-left: 20px; }
+  .ba { position: relative; margin: 0; --p: 50%; border: 1px solid rgba(201, 153, 74, 0.35); border-radius: 4px; overflow: hidden; touch-action: pan-y; cursor: ew-resize; }
+  .ba.narrow { max-width: 390px; }
+  .ba img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
+  .ba img.old { position: absolute; inset: 0; clip-path: inset(0 calc(100% - var(--p)) 0 0); }
+  .ba::after { content: ""; position: absolute; top: 0; bottom: 0; left: var(--p); width: 2px; margin-left: -1px; background: #f1d9a0; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); pointer-events: none; }
+  .ba span { position: absolute; top: 10px; padding: 2px 10px; border-radius: 3px; background: rgba(0, 0, 0, 0.62); font-size: 13px; pointer-events: none; }
+  .ba span.l { left: 10px; } .ba span.r { right: 10px; }
+  .ba.land { max-width: 844px; }
+  .row { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+  .row > div { flex: 1 1 300px; min-width: 0; }
+  video, .solo { display: block; max-width: 100%; border: 1px solid rgba(201, 153, 74, 0.35); border-radius: 4px; }
+  video { width: 300px; }
+  ol, ul { margin: 6px 0 12px; padding-left: 22px; color: rgba(233, 220, 192, 0.82); }
+  li { margin: 3px 0; }
+  code { background: rgba(255, 230, 180, 0.1); padding: 1px 6px; border-radius: 3px; color: #f1d9a0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>验收对比 · 第三轮：手机、桌面铜器、分界线</h1>
+  <p>每张图可以左右拖动。分界线左边是改之前的线上版本，右边是现在的 <a href="index.html">index.html</a>（还没有提交，也没有发布）。</p>
+
+  <h2>先看这段 30 秒的手机录屏（新版）</h2>
+  <div class="row">
+    <div style="flex: 0 0 auto"><video src="compare/v3/phone-walkthrough.mp4" controls muted loop playsinline autoplay></video></div>
+    <div>
+      <p>白色圆点是手指的位置（只是录屏时加的标记，页面里没有）。按顺序发生的事：</p>
+      <ol>
+        <li>图画完以后，分界线自己向左、向右各滑一小段，让人一眼看懂“这条线能拉”。</li>
+        <li>手指捏住纸张下边缘的黄铜滑块左右拖；线两边用红粉笔写着“ink / timber”。</li>
+        <li>把滑块推到纸边，整张变成实木；在滑块上连点两下，线回到正中。</li>
+        <li>在纸上拖动是转动机器。手指即使正好落在线上，也不会误抓到线。</li>
+        <li>点一下左下角的摇柄，机器停住；用手转两下；再点一下，机器重新自己走。</li>
+        <li>点零件，批注横着写在机器下方；点空白处收起。</li>
+        <li>拉右下角的铜尺，机器拆开，零件名字排在纸的两侧页边。</li>
+        <li>把镜子拖到反写的字上。</li>
+      </ol>
+    </div>
+  </div>
+
+  <h2>1. 手机竖屏：打开第一眼</h2>
+  <p>旧版：机翼两头被纸边切掉，镜子压在标题和字上，下面两排铜器盖住纸的下半截，分界线的把手悬在画面中间。新版：机器换成斜侧面，两只翅膀都在纸里；铜器只剩摇柄和铜尺，放在纸下面的桌面上；镜子和反写的字移到纸的下半部分；分界线的滑块夹在纸的下边缘。</p>
+  <figure class="ba narrow"><img src="compare/v3/p1_new.jpg" alt="新版"><img class="old" src="compare/v3/p1_old.jpg" alt="旧版"><span class="l">旧版</span><span class="r">新版</span></figure>
+
+  <h2>2. 手机竖屏：点零件看批注</h2>
+  <p>旧版批注只有不到半张纸宽，挤在零件旁边。新版横着写满一行宽，放在机器下方，原来在那里的反写字会先淡出让位。</p>
+  <figure class="ba narrow"><img src="compare/v3/p2_new.jpg" alt="新版"><img class="old" src="compare/v3/p2_old.jpg" alt="旧版"><span class="l">旧版</span><span class="r">新版</span></figure>
+
+  <h2>3. 手机竖屏：拆开</h2>
+  <p>旧版零件和名字从纸的左右两边跑出去，名字互相压住。新版镜头退远一点，名字改成沿左右页边排成两列，用引线连到零件。</p>
+  <figure class="ba narrow"><img src="compare/v3/p3_new.jpg" alt="新版"><img class="old" src="compare/v3/p3_old.jpg" alt="旧版"><span class="l">旧版</span><span class="r">新版</span></figure>
+
+  <h2>4. 手机竖屏：自走车</h2>
+  <p>旧版左边的大轮子有一半在纸外。新版整辆车都在纸里。</p>
+  <figure class="ba narrow"><img src="compare/v3/p4_new.jpg" alt="新版"><img class="old" src="compare/v3/p4_old.jpg" alt="旧版"><span class="l">旧版</span><span class="r">新版</span></figure>
+
+  <h2>5. 手机横屏</h2>
+  <p>旧版铜器占掉下面三分之一，镜子很大。新版铜器缩小，放到纸外。</p>
+  <figure class="ba land"><img src="compare/v3/l1_new.jpg" alt="新版"><img class="old" src="compare/v3/l1_old.jpg" alt="旧版"><span class="l">旧版</span><span class="r">新版</span></figure>
+
+  <h2>6. 电脑：打开第一眼</h2>
+  <p>旧版四件铜器在纸的下方排成一排，像一条工具栏，而且比周围的纸亮很多。新版只留摇柄（左下）和铜尺（右下），躺在纸外面的桌面上；铜的颜色改成旧黄铜，带斑驳和划痕，亮度跟着烛光一起往角落变暗，影子朝右下方（和纸的影子同一个方向）。分界线的滑块在纸的下边缘，不再碰到机器。</p>
+  <figure class="ba"><img src="compare/v3/d1_new.jpg" alt="新版"><img class="old" src="compare/v3/d1_old.jpg" alt="旧版"><span class="l">旧版</span><span class="r">新版</span></figure>
+
+  <h2>7. 电脑：拆开</h2>
+  <figure class="ba"><img src="compare/v3/d2_new.jpg" alt="新版"><img class="old" src="compare/v3/d2_old.jpg" alt="旧版"><span class="l">旧版</span><span class="r">新版</span></figure>
+
+  <h2>8. 电脑：点零件看批注</h2>
+  <figure class="ba"><img src="compare/v3/d3_new.jpg" alt="新版"><img class="old" src="compare/v3/d3_old.jpg" alt="旧版"><span class="l">旧版</span><span class="r">新版</span></figure>
+
+  <h2>9. 作者工具：网址后面加 <code>#maker=1</code> 才出现</h2>
+  <p>访客看不到 Record、转速牌、INK / HALF / TIMBER 牌，也按不出录制抽屉和干净画面。网址加 <code>#maker=1</code> 后全部回来（<code>#maker=0</code> 再藏起来，不会记在浏览器里）。原来的录制网址，例如 <code>#mode=cine&amp;preset=viral&amp;t=9.6</code>、<code>#ar=9:16&amp;clean=1</code>，会自动带出作者工具，用法不变。</p>
+  <img class="solo" src="compare/v3/m1_new.jpg" alt="作者工具">
+
+  <div class="tip"><b>静态图看不出来、需要你亲手试的：</b>
+    <ul>
+      <li>鼠标移到分界线上：线会变粗，滑块微微抬起，两边出现“ink / timber”。</li>
+      <li>真手机上的手感：滑块好不好捏，摇柄好不好转，铜尺好不好拉。我只在电脑上模拟了触摸，没有在真机和 Safari 上试过。</li>
+      <li>摇柄“点一下停、再点一下走”是新加的，看你觉得自然不自然。</li>
+    </ul>
+  </div>
+</main>
+<script>
+  document.querySelectorAll('.ba').forEach(function (f) {
+    function set(ev) { var r = f.getBoundingClientRect(); f.style.setProperty('--p', Math.max(0, Math.min(100, (ev.clientX - r.left) / r.width * 100)) + '%'); }
+    var down = false;
+    f.addEventListener('pointerdown', function (ev) { down = true; f.setPointerCapture(ev.pointerId); set(ev); });
+    f.addEventListener('pointermove', function (ev) { if (down) set(ev); });
+    f.addEventListener('pointerup', function () { down = false; });
+    f.addEventListener('pointercancel', function () { down = false; });
+  });
+</script>
+</body>
+</html>

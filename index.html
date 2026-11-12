@@ -21,8 +21,9 @@
 <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=IM+Fell+English+SC&display=swap" rel="stylesheet">
 <style>
   /* One visual world: a leaf from a Renaissance notebook lying on a walnut desk by candle-light.
-     Visitors only ever touch things that could sit on that desk: a brass crank, a brass rule, a divider, a hand mirror.
-     Maker tools (recording frame, timeline) live in a drawer that stays shut until asked for. */
+     Visitors only ever touch things that could sit on that desk: a brass crank and a brass rule lying below the sheet,
+     a rider clipped to the sheet's lower edge, a hand mirror. Nothing but the mirror lies on the drawing itself.
+     Maker tools (recording frame, timeline, speed plaque, style plate) only exist when the page is opened with #maker=1. */
   :root {
     --desk: #17100a;
     --paper: #ecdec1;
@@ -45,11 +46,14 @@
     overflow: hidden;
     -webkit-font-smoothing: antialiased;
     -webkit-user-select: none; user-select: none;
-    -webkit-tap-highlight-color: transparent;
+    -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none;
+    touch-action: manipulation;
   }
   button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
   :focus-visible { outline: 2px solid #e0a95c; outline-offset: 3px; border-radius: 3px; }
-  body[data-mode="wb"] .cine-only, body[data-mode="cine"] .wb-only { display: none !important; }
+  body[data-mode="wb"] .cine-only, body[data-mode="cine"] .wb-only, body:not(.maker) .maker-only { display: none !important; }
+  /* Things on the desk take the same candle-light falloff as the page under them (--lit is set from the shader's own formula) */
+  .lit { filter: brightness(var(--lit, 1)) saturate(1.12); }
 
   /* ---------- The page ---------- */
   #stage {
@@ -71,6 +75,7 @@
     color: var(--ink); pointer-events: none;
     display: grid; gap: calc(var(--s) * 0.5); max-width: 62%;
   }
+  body.portrait .title { max-width: 88%; }
   .title .mirror { font-style: italic; font-size: calc(var(--s) * 2.4); height: 1.25em; white-space: nowrap; visibility: hidden; justify-self: start; }
   .title h1 { font-family: var(--display); font-weight: 400; font-size: calc(var(--s) * 4.1); line-height: 1.02; margin: 0; letter-spacing: 0.01em; text-wrap: balance; }
   .title p { margin: 0; font-style: italic; font-size: calc(var(--s) * 1.85); color: var(--ink-soft); }
@@ -93,6 +98,7 @@
     z-index: 2;
   }
   #note.on { opacity: 1; }
+  body.portrait #note { width: min(330px, calc(100% - 52px)); }
   #note .in { transform: rotate(-1.4deg); transform-origin: 0 0; }
   #note b { display: block; font-family: var(--display); font-style: normal; font-weight: 400; letter-spacing: 0.1em; font-size: 0.95em; color: var(--sanguine); }
   #note .slot { display: block; height: 1.45em; }
@@ -116,33 +122,58 @@
   }
   #turn.go { transition: transform 0.85s cubic-bezier(0.5, 0, 0.75, 0.6); transform: translateX(-114%) rotate(-5deg); }
 
-  /* ---------- Brass ---------- */
+  /* ---------- Brass: old, handled metal. One procedural tile of mottling and scratches (--brassTex) lies over every piece;
+     light comes from the upper left like the candle, so highlights sit top-left and shadows fall down and to the right ---------- */
   .brass {
     background:
-      linear-gradient(180deg, rgba(255, 247, 216, 0.6), rgba(255, 247, 216, 0) 36%, rgba(58, 34, 4, 0.38)),
-      repeating-linear-gradient(91deg, rgba(255, 255, 255, 0.06) 0 1px, rgba(0, 0, 0, 0.05) 1px 3px),
-      linear-gradient(180deg, #dab464, #a67c2c);
-    border: 1px solid #553910;
-    box-shadow: inset 0 1px 0 rgba(255, 245, 212, 0.65), inset 0 -2px 3px rgba(70, 42, 8, 0.42), 0 7px 14px rgba(30, 18, 4, 0.42), 0 1px 2px rgba(30, 18, 4, 0.6);
-    color: #3a2609; text-shadow: 0 1px 0 rgba(255, 240, 200, 0.5);
+      var(--brassTex, none),
+      linear-gradient(172deg, rgba(255, 240, 200, 0.5), rgba(255, 240, 200, 0) 38%, rgba(44, 24, 2, 0.36)),
+      linear-gradient(180deg, #caa255, #9a7430);
+    background-blend-mode: overlay, normal, normal;
+    border: 1px solid #3f2a0a;
+    box-shadow: inset 1px 1px 0 rgba(255, 240, 204, 0.5), inset -1px -2px 3px rgba(50, 28, 4, 0.5), 3px 5px 5px -1px rgba(0, 0, 0, 0.6), 9px 15px 20px -6px rgba(0, 0, 0, 0.55);
+    color: #2f1e06; text-shadow: 0 1px 0 rgba(255, 236, 190, 0.42);
     font-family: var(--display); letter-spacing: 0.12em;
   }
 
-  /* The divider between ink and timber: a brass grip on the line itself */
-  #split {
-    position: absolute; left: 0; top: 0; translate: var(--x, 0px) var(--y, 0px); width: 30px; height: 58px; margin: -29px 0 0 -15px; z-index: 3;
-    border-radius: 15px; cursor: ew-resize; touch-action: none;
+  /* The divider between ink and timber: a brass rider clipped over the lower edge of the sheet, clear of the drawing.
+     Its point carries the line; the lip that hangs over the desk is knurled for the thumb. */
+  #split { position: absolute; left: 0; top: 0; translate: var(--x, 0px) var(--y, 0px); width: 0; height: 0; z-index: 3; cursor: ew-resize; touch-action: none; }
+  #split::before { content: ""; position: absolute; left: -28px; top: -44px; width: 56px; height: 68px; }   /* a generous place to put a finger */
+  #split .rider {
+    position: absolute; left: -17px; top: -31px; width: 34px; height: 48px; box-sizing: border-box; display: block;
+    border-radius: 5px 5px 11px 11px / 5px 5px 13px 13px;
     background:
-      linear-gradient(90deg, rgba(60, 36, 6, 0.55), rgba(255, 247, 216, 0.75) 38%, rgba(255, 247, 216, 0.2) 55%, rgba(58, 34, 4, 0.6)),
-      linear-gradient(180deg, #dab464, #a67c2c);
-    border: 1px solid #553910;
-    box-shadow: 0 6px 12px rgba(30, 18, 4, 0.45), 0 1px 2px rgba(30, 18, 4, 0.6), inset 0 0 0 2px rgba(120, 84, 24, 0.35);
+      var(--brassTex, none),
+      linear-gradient(100deg, rgba(48, 28, 4, 0.5), rgba(255, 240, 200, 0.62) 34%, rgba(255, 240, 200, 0.12) 56%, rgba(44, 24, 2, 0.55)),
+      linear-gradient(180deg, #cfa85a, #9a7430);
+    background-blend-mode: overlay, normal, normal;
+    border: 1px solid #3f2a0a;
+    box-shadow: inset 1px 1px 0 rgba(255, 240, 204, 0.5), inset -1px -2px 3px rgba(50, 28, 4, 0.5), 2px 4px 4px -1px rgba(30, 16, 2, 0.6), 6px 11px 14px -4px rgba(30, 16, 2, 0.5);
+    transition: transform 0.16s ease-out, box-shadow 0.16s ease-out;
   }
-  #split::before, #split::after { content: ""; position: absolute; top: 50%; width: 0; height: 0; border: 5px solid transparent; margin-top: -5px; }
-  #split::before { left: 3px; border-right-color: #4a3210; border-left-width: 0; }
-  #split::after { right: 3px; border-left-color: #4a3210; border-right-width: 0; }
-  #split i { position: absolute; left: 50%; top: 9px; bottom: 9px; width: 2px; margin-left: -1px; background: rgba(74, 50, 16, 0.55); border-radius: 1px; }
-  #split.live { box-shadow: 0 10px 18px rgba(30, 18, 4, 0.5), 0 1px 2px rgba(30, 18, 4, 0.6), 0 0 0 3px rgba(224, 169, 92, 0.35); }
+  #split .rider::before { content: ""; position: absolute; left: 50%; top: -8px; margin-left: -6px; border: 6px solid transparent; border-top-width: 0; border-bottom: 8px solid #c09a4e; filter: drop-shadow(0 -1px 0 #3f2a0a); }
+  #split .rider svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; fill: none; stroke-linecap: round; }
+  #split .rider .cut { stroke: rgba(46, 28, 6, 0.85); stroke-width: 1.2; }
+  #split .rider .hi { stroke: rgba(255, 240, 204, 0.5); stroke-width: 1; }
+  @keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(224, 169, 92, 0.75); opacity: 1; } 100% { box-shadow: 0 0 0 26px rgba(224, 169, 92, 0); opacity: 0; } }
+  @keyframes ring2 { 0% { box-shadow: 0 0 0 0 rgba(224, 169, 92, 0.7); opacity: 1; } 100% { box-shadow: 0 0 0 13px rgba(224, 169, 92, 0); opacity: 0; } }
+  #split .rider::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; animation: ring2 1.9s ease-out 0.95s infinite; }
+  body.did-split #split .rider::after { animation: none; opacity: 0; }
+  #split.hot .rider { transform: translateY(-2px); box-shadow: inset 1px 1px 0 rgba(255, 240, 204, 0.6), inset -1px -2px 3px rgba(50, 28, 4, 0.5), 3px 6px 6px -1px rgba(30, 16, 2, 0.55), 9px 16px 20px -4px rgba(30, 16, 2, 0.5), 0 0 0 3px rgba(224, 169, 92, 0.32); }
+  #split.live .rider { transform: translateY(-3px) scale(1.06); box-shadow: inset 1px 1px 0 rgba(255, 240, 204, 0.6), inset -1px -2px 3px rgba(50, 28, 4, 0.5), 4px 8px 8px -1px rgba(30, 16, 2, 0.5), 12px 20px 24px -4px rgba(30, 16, 2, 0.5), 0 0 0 3px rgba(224, 169, 92, 0.4); }
+  /* which side is which, written in red chalk beside the rider while it matters */
+  #split .lab {
+    position: absolute; top: -26px; white-space: nowrap; pointer-events: none;
+    font-style: italic; font-size: 15px; line-height: 1; color: var(--sanguine);
+    text-shadow: 0 0 6px rgba(236, 222, 193, 0.95), 0 0 2px rgba(236, 222, 193, 0.95);
+    opacity: 0; transition: opacity 0.5s; filter: brightness(var(--lit, 1));
+  }
+  #split .lab.l { right: 27px; transform: rotate(-2deg); }
+  #split .lab.r { left: 27px; transform: rotate(-2deg); }
+  #split .lab svg { width: 15px; height: 9px; fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; vertical-align: 1px; margin: 0 3px; }
+  body.hints:not(.did-split) #split .lab, #split.hot .lab, #split.live .lab { opacity: 0.92; }
+  #split.at-lo .lab.l, #split.at-hi .lab.r { opacity: 0 !important; }
 
   /* The hand mirror */
   #lens { position: absolute; left: 0; top: 0; translate: var(--x, 0px) var(--y, 0px); width: 118px; height: 118px; margin: -59px 0 0 -59px; z-index: 3; cursor: grab; touch-action: none; }
@@ -151,12 +182,12 @@
     position: absolute; inset: 0; border-radius: 50%;
     background: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.05) 34%, rgba(160, 190, 200, 0.07) 60%, rgba(40, 30, 20, 0.12));
     backdrop-filter: brightness(1.07) contrast(1.04); -webkit-backdrop-filter: brightness(1.07) contrast(1.04);
-    box-shadow: inset 0 0 0 7px #b88f3f, inset 0 0 0 8px #553910, inset 0 0 0 10px rgba(255, 244, 205, 0.55), inset 0 0 18px 10px rgba(30, 20, 8, 0.28),
-      0 12px 22px rgba(30, 18, 4, 0.45), 0 2px 3px rgba(30, 18, 4, 0.55), 0 0 0 1px #553910;
+    box-shadow: inset 0 0 0 7px #a9853d, inset 0 0 0 8px #47300c, inset 0 0 0 10px rgba(255, 240, 200, 0.42), inset 0 0 18px 10px rgba(30, 20, 8, 0.28),
+      6px 13px 20px rgba(30, 18, 4, 0.45), 1px 2px 3px rgba(30, 18, 4, 0.55), 0 0 0 1px #47300c;
   }
   #lens .handle {
     position: absolute; left: 80%; top: 80%; width: 62px; height: 15px; border-radius: 4px 8px 8px 4px; transform-origin: 0 50%; transform: rotate(45deg) translateY(-50%);
-    background: linear-gradient(180deg, #8a5a2c, #5b3717 55%, #3a220d); border: 1px solid #2a1808; box-shadow: 0 8px 12px rgba(30, 18, 4, 0.4);
+    background: linear-gradient(180deg, #8a5a2c, #5b3717 55%, #3a220d); border: 1px solid #2a1808; box-shadow: 5px 9px 12px rgba(30, 18, 4, 0.4);
   }
   #lens .handle::before { content: ""; position: absolute; left: -3px; top: -2px; bottom: -2px; width: 9px; border-radius: 2px; background: linear-gradient(180deg, #e2c078, #9a7228); border: 1px solid #553910; }
   #lens.flip .glass { box-shadow: inset 0 0 0 7px #e7c983, inset 0 0 0 8px #553910, inset 0 0 0 10px rgba(255, 244, 205, 0.8), inset 0 0 18px 10px rgba(255, 230, 170, 0.25),
@@ -173,14 +204,17 @@
   }
   .hint svg { position: absolute; overflow: visible; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
   body.hints .hint { opacity: 0.92; }
-  body.did-split #hintSplit, body.did-lens #hintLens, body.did-drive #hintCrank { opacity: 0; }
-  #hintSplit { transform: translate(34px, 30px) rotate(-3deg); }
-  #hintSplit svg { left: -24px; top: -16px; }
+  body.did-lens #hintLens, body.did-drive #hintCrank, body.did-explode #hintRule, body.did-pick #hintPick { opacity: 0; }
   #hintLens { transform: translate(-100%, 0) translate(-74px, -18px) rotate(-3deg); text-align: right; }
   #hintLens svg { right: -44px; top: 8px; }
-  #hintCrank { left: 6px; bottom: calc(100% + 10px); transform: rotate(-3deg); }
-  #hintCrank svg { left: 12px; top: 20px; }
-  body:not(.ui-full) #hintCrank { color: #d9b98a; text-shadow: none; }
+  #hintCrank { left: 14px; bottom: calc(100% + 50px); transform: rotate(-3deg); }
+  #hintCrank svg { left: 6px; top: 19px; }
+  #hintRule { left: 34px; bottom: calc(100% + 50px); transform: rotate(-2deg); }
+  #hintRule svg { left: -22px; top: 15px; }
+  body:not(.ui-full) #hintCrank, body:not(.ui-full) #hintRule { color: #d9b98a; text-shadow: none; }
+  #hintPick { transform: rotate(-3deg); display: none; }
+  #hintPick svg { left: 40px; top: -30px; }
+  @media (pointer: coarse) { #hintPick { display: block; } }
 
   /* ---------- Things on the desk (outside the page) ---------- */
   .ui { z-index: 6; }
@@ -219,58 +253,75 @@
   .seg button:first-child { border-radius: 3px 0 0 3px !important; margin-left: 0; }
   .seg button:last-child { border-radius: 0 3px 3px 0 !important; }
 
-  #bench { position: fixed; left: 50%; bottom: 14px; transform: translateX(-50%); display: flex; align-items: flex-end; justify-content: center; gap: 14px 26px; flex-wrap: wrap; width: max-content; max-width: calc(100% - 20px); }
-  .crankWrap { position: relative; display: flex; align-items: flex-end; gap: 10px; }
+  /* The strip of desk below the sheet: the crank at one end, the rule at the other, nothing on the drawing */
+  #bench {
+    position: fixed; left: 0; right: 0; bottom: 0; box-sizing: border-box; padding: 20px clamp(14px, 2.4vw, 36px) 10px;
+    display: flex; align-items: center; justify-content: space-between; gap: 14px; pointer-events: none;
+  }
+  #bench > * { pointer-events: auto; }
+  .crankWrap { position: relative; display: flex; align-items: center; gap: 12px; flex: none; }
   #crank {
-    position: relative; width: 86px; height: 86px; border-radius: 50%; flex: none; cursor: grab; touch-action: none;
+    position: relative; width: 76px; height: 76px; border-radius: 50%; flex: none; cursor: grab; touch-action: none;
     background:
-      radial-gradient(circle, transparent 0 20%, rgba(70, 44, 10, 0.5) 20.5% 22%, transparent 22.5% 58%, rgba(70, 44, 10, 0.55) 58.5% 60.5%, transparent 61%),
-      repeating-conic-gradient(from 0deg, rgba(70, 44, 10, 0.5) 0 1.2deg, transparent 1.2deg 15deg),
-      radial-gradient(circle at 34% 28%, #f6dc98, #c89947 46%, #7b5420 100%);
-    border: 2px solid #553910;
-    box-shadow: inset 0 0 0 4px rgba(255, 240, 200, 0.22), 0 9px 16px rgba(30, 18, 4, 0.5), 0 2px 3px rgba(30, 18, 4, 0.6);
+      var(--brassTex, none),
+      radial-gradient(circle at 32% 26%, rgba(255, 238, 190, 0.6), rgba(255, 238, 190, 0) 48%),
+      radial-gradient(circle, #9a7630 0 19%, #5a3f14 19.5% 21.5%, #c29a4e 22% 57%, #5a3f14 57.5% 59.5%, #b08a40 60% 100%);
+    background-blend-mode: overlay, normal, normal;
+    border: 1.5px solid #3a2608;
+    box-shadow: inset 0 0 0 3px rgba(255, 236, 190, 0.14), inset -3px -5px 8px rgba(40, 22, 2, 0.5), 3px 6px 6px -1px rgba(0, 0, 0, 0.65), 10px 17px 22px -6px rgba(0, 0, 0, 0.6);
   }
   #crank:active { cursor: grabbing; }
   #crankArm { position: absolute; inset: 0; pointer-events: none; }
-  #crankArm::before { content: ""; position: absolute; left: 50%; top: 11px; width: 8px; height: 34px; margin-left: -4px; background: linear-gradient(90deg, #6b4a17, #3d2909); border-radius: 4px; box-shadow: 0 2px 3px rgba(0, 0, 0, 0.5); }
-  #crankArm::after { content: ""; position: absolute; left: 50%; top: -2px; width: 24px; height: 24px; margin-left: -12px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #9a6a38, #4a2c12 70%, #2a180a); box-shadow: 0 3px 5px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 220, 170, 0.15); }
-  #crank > i { position: absolute; left: 50%; top: 50%; width: 15px; height: 15px; margin: -7.5px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #6e5020, #2c1c08); box-shadow: 0 0 0 2px rgba(255, 236, 190, 0.3); }
-  @keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(224, 169, 92, 0.75); opacity: 1; } 100% { box-shadow: 0 0 0 26px rgba(224, 169, 92, 0); opacity: 0; } }
+  /* the engraved rim turns with the handle, the light on the metal stays where the candle is */
+  #crankArm .dial {
+    position: absolute; inset: 3px; border-radius: 50%; z-index: -1;
+    background:
+      repeating-conic-gradient(from -1.6deg, rgba(46, 28, 6, 0.8) 0 3.2deg, transparent 3.2deg 90deg),
+      repeating-conic-gradient(from -0.7deg, rgba(46, 28, 6, 0.6) 0 1.4deg, transparent 1.4deg 15deg);
+    -webkit-mask: radial-gradient(circle, transparent 0 65%, #000 66% 94%, transparent 95%); mask: radial-gradient(circle, transparent 0 65%, #000 66% 94%, transparent 95%);
+  }
+  #crankArm::before { content: ""; position: absolute; left: 50%; top: 12%; width: 9%; height: 40%; margin-left: -4.5%; background: linear-gradient(90deg, #7a5a22, #3d2909); border-radius: 4px; box-shadow: 2px 3px 3px rgba(0, 0, 0, 0.5); }
+  #crankArm::after { content: ""; position: absolute; left: 50%; top: -3%; width: 29%; height: 29%; margin-left: -14.5%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #9a6a38, #4a2c12 70%, #2a180a); box-shadow: 2px 4px 5px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 220, 170, 0.15); }
+  #crank > i { position: absolute; left: 50%; top: 50%; width: 18%; height: 18%; margin: -9%; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #6e5020, #2c1c08); box-shadow: 0 0 0 2px rgba(255, 236, 190, 0.26); }
   #crank::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; pointer-events: none; animation: ring 1.9s ease-out infinite; }
-  body.did-drive #crank::after { animation: none; opacity: 0; }
-  .plaque { display: grid; gap: 5px; padding: 6px 9px 7px; border-radius: 3px; min-width: 62px; margin-bottom: 6px; }
+  body.did-drive #crank:not(.idle)::after { animation: none; opacity: 0; }
+  .plaque { display: grid; gap: 5px; padding: 6px 9px 7px; border-radius: 3px; min-width: 62px; }
   .plaque b { font-family: var(--body); font-weight: 400; font-size: 25px; letter-spacing: 0; font-variant-numeric: tabular-nums; line-height: 0.9; }
   .plaque b small { font-family: var(--display); font-size: 10px; letter-spacing: 0.16em; opacity: 0.75; margin-left: 4px; }
   #autoBtn { display: flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: 0.16em; text-shadow: inherit; }
   #autoBtn i { width: 9px; height: 9px; border-radius: 50%; background: #4a3210; box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 240, 200, 0.5); }
   #autoBtn[aria-pressed="true"] i { background: radial-gradient(circle at 40% 35%, #fff0b8, #e8922e 60%, #9a4a12); box-shadow: 0 0 7px rgba(255, 170, 60, 0.9), inset 0 0 1px rgba(255, 255, 255, 0.6); }
-  .plate { display: flex; align-items: stretch; border-radius: 3px; margin-bottom: 6px; }
+  .plate { display: flex; align-items: stretch; border-radius: 3px; }
   .plate button { padding: 9px 13px 8px; font-size: 13px; letter-spacing: 0.14em; text-shadow: inherit; border-left: 1px solid rgba(74, 50, 16, 0.55); box-shadow: inset 1px 0 0 rgba(255, 244, 205, 0.4); opacity: 0.62; }
   .plate button:first-child { border-left: 0; box-shadow: none; }
   .plate button:hover { opacity: 0.9; }
   .plate button[aria-pressed="true"] { opacity: 1; background: rgba(58, 34, 4, 0.2); box-shadow: inset 0 2px 4px rgba(40, 24, 4, 0.5); }
-  .ruler { position: relative; width: min(330px, 78vw); height: 44px; border-radius: 2px; margin-bottom: 6px; }
-  .ruler .lbl { position: absolute; left: 50%; transform: translateX(-50%); bottom: 3px; font-size: 9.5px; letter-spacing: 0.2em; opacity: 0.8; pointer-events: none; }
-  .ruler .nums { position: absolute; left: 11px; right: 11px; top: 15px; display: flex; justify-content: space-between; font-size: 10px; letter-spacing: 0; pointer-events: none; opacity: 0.85; }
+  .rulerWrap { position: relative; flex: 0 1 auto; min-width: 0; }
+  .ruler { position: relative; width: min(400px, 36vw); height: 36px; border-radius: 2px; }
+  .ruler .nums { position: absolute; left: 12px; right: 12px; top: 16px; display: flex; justify-content: space-between; font-size: 10.5px; letter-spacing: 0; pointer-events: none; opacity: 0.8; }
   .ruler .nums span { width: 0; display: flex; justify-content: center; }
   #explode {
-    -webkit-appearance: none; appearance: none; position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0 11px; box-sizing: border-box;
+    -webkit-appearance: none; appearance: none; position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0 12px; box-sizing: border-box;
     background:
-      repeating-linear-gradient(90deg, rgba(58, 38, 9, 0.95) 0 1.5px, transparent 1.5px 10%) content-box top left / 100% 13px no-repeat,
-      repeating-linear-gradient(90deg, rgba(58, 38, 9, 0.7) 0 1px, transparent 1px 2%) content-box top left / 100% 7px no-repeat;
+      repeating-linear-gradient(90deg, rgba(46, 28, 6, 0.95) 0 1.5px, transparent 1.5px 10%) content-box top left / 100% 13px no-repeat,
+      repeating-linear-gradient(90deg, rgba(46, 28, 6, 0.7) 0 1px, transparent 1px 2%) content-box top left / 100% 7px no-repeat;
     cursor: ew-resize; outline-offset: 4px;
   }
   #explode::-webkit-slider-runnable-track { height: 100%; background: none; }
   #explode::-moz-range-track { height: 100%; background: none; }
   #explode::-webkit-slider-thumb {
-    -webkit-appearance: none; width: 20px; height: 56px; margin-top: -6px; border-radius: 3px; cursor: ew-resize;
-    background: linear-gradient(90deg, #6b4c16, #dcbb6a 38%, #fbeab0 50%, #b48d3c 62%, #5e4212);
-    border: 1px solid #3d2808; box-shadow: 0 5px 9px rgba(20, 12, 2, 0.55), inset 0 0 0 1px rgba(255, 244, 205, 0.3);
+    -webkit-appearance: none; width: 22px; height: 50px; margin-top: -7px; border-radius: 3px; cursor: ew-resize;
+    background:
+      linear-gradient(90deg, transparent 10px, rgba(46, 28, 6, 0.8) 10px 11px, rgba(255, 240, 204, 0.5) 11px 12px, transparent 12px),
+      linear-gradient(100deg, #5e4212, #cfae62 36%, #f3e0a6 48%, #a8823a 64%, #543a0e);
+    border: 1px solid #33210a; box-shadow: 3px 6px 8px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 240, 204, 0.26);
   }
   #explode::-moz-range-thumb {
-    width: 18px; height: 54px; border-radius: 3px; cursor: ew-resize;
-    background: linear-gradient(90deg, #6b4c16, #dcbb6a 38%, #fbeab0 50%, #b48d3c 62%, #5e4212);
-    border: 1px solid #3d2808; box-shadow: 0 5px 9px rgba(20, 12, 2, 0.55);
+    width: 20px; height: 48px; border-radius: 3px; cursor: ew-resize;
+    background:
+      linear-gradient(90deg, transparent 9px, rgba(46, 28, 6, 0.8) 9px 10px, rgba(255, 240, 204, 0.5) 10px 11px, transparent 11px),
+      linear-gradient(100deg, #5e4212, #cfae62 36%, #f3e0a6 48%, #a8823a 64%, #543a0e);
+    border: 1px solid #33210a; box-shadow: 3px 6px 8px rgba(0, 0, 0, 0.6);
   }
 
   #transport {
@@ -297,20 +348,23 @@
     #tabs button { font-size: 12px; padding: 5px 9px 6px; }
     #tabs button.locked em, .lg { display: none; }
     #tabs button.locked small { margin-right: 0; }
-    #hintCrank { left: 16px; }
     #tools { font-size: 13px; gap: 12px; right: 10px; }
-    #bench { gap: 8px 12px; bottom: 8px; }
-    #crank { width: 66px; height: 66px; }
-    #crankArm::before { top: 9px; height: 25px; width: 6px; margin-left: -3px; }
-    #crankArm::after { width: 19px; height: 19px; margin-left: -9.5px; }
-    .plate button { padding: 8px 9px 7px; font-size: 12px; }
-    .ruler { width: min(300px, 92vw); height: 40px; }
-    #lens { width: 92px; height: 92px; margin: -46px 0 0 -46px; }
-    #lens .handle { width: 46px; height: 12px; }
-    .hint { font-size: 13px; }
     #hintLens { display: none; }
     #toast { width: 78%; top: calc(var(--st) + var(--s) * 30); }
   }
+  /* Small screens (a phone either way up): the same objects, sized for a thumb, with the rule taking whatever width is left */
+  body.compact #bench { padding: 18px 12px 8px; gap: 12px; }
+  body.compact #crank { width: 62px; height: 62px; }
+  body.compact .rulerWrap { flex: 1 1 auto; max-width: 340px; }
+  body.compact .ruler { width: auto; }
+  body.compact #lens { width: 86px; height: 86px; margin: -43px 0 0 -43px; }
+  body.compact #lens .handle { width: 44px; height: 12px; }
+  body.compact .hint { font-size: 13.5px; }
+  body.compact #hintCrank { left: 4px; bottom: calc(100% + 56px); }
+  body.compact #hintRule { bottom: calc(100% + 56px); }
+  body.portrait.compact #hintRule { display: none; }   /* a narrow sheet has room for one prompt at its foot; the rule explains itself at the first touch */
+  body.compact.squat #bench { padding: 16px 12px 6px; }
+  body.compact.squat #crank { width: 52px; height: 52px; }
   @media (pointer: coarse) { .fine { display: none; } }
   @media (prefers-reduced-motion: reduce) {
     #crank::after, #lens.nudge { animation: none; }
@@ -336,12 +390,20 @@
     <p id="tSub"></p>
   </div>
   <div id="note" role="status"></div>
-  <div id="split" class="wb-only" role="slider" tabindex="0" aria-label="Divider between ink sketch and solid timber" aria-valuemin="0" aria-valuemax="100" aria-valuenow="50"><i></i></div>
-  <div id="hintSplit" class="hint wb-only">drag<span class="lg"> — ink on one side, timber on the other</span>
-    <svg width="22" height="20" viewBox="0 0 22 20"><path d="M20 18 C12 17, 6 12, 3 3 M3 3 l0.5 6 M3 3 l5 3"/></svg></div>
+  <div id="split" class="wb-only" role="slider" tabindex="0" aria-label="Divider between ink sketch and solid timber. Drag it sideways; double-click to centre it." aria-valuemin="0" aria-valuemax="100" aria-valuenow="50">
+    <span class="lab l">ink<svg viewBox="0 0 15 9"><path d="M14 4.5 C9 3.6, 5 4, 1.5 4.6 M1.5 4.6 l3.6 -2.6 M1.5 4.6 l3.8 2.4"/></svg></span>
+    <span class="lab r"><svg viewBox="0 0 15 9"><path d="M1 4.5 C6 3.6, 10 4, 13.5 4.6 M13.5 4.6 l-3.6 -2.6 M13.5 4.6 l-3.8 2.4"/></svg>timber</span>
+    <i class="rider"><svg viewBox="0 0 34 48" aria-hidden="true">
+      <path class="hi" d="M17.9 2.5v27M7.5 16.9h19.5M9 37.4v7M12.2 36.9v8M15.4 36.9v8.5M18.6 36.9v8.5M21.8 36.9v8M25 37.4v7"/>
+      <path class="cut" d="M17 2v27M7 16h20M11 12l-4.2 4 4.2 4M23 12l4.2 4 -4.2 4" fill="none" stroke-linejoin="round"/>
+      <path class="cut" d="M8.2 37v7M11.4 36.5v8M14.6 36.5v8.5M17.8 36.5v8.5M21 36.5v8M24.2 37v7M27.2 37.5v5.5" fill="none"/>
+    </svg></i>
+  </div>
   <div id="lens" class="wb-only" role="button" tabindex="0" aria-label="Da Vinci's mirror. Drag it over the mirror writing to read it; press Enter to flip all the writing."><div class="handle"></div><div class="glass"></div></div>
   <div id="hintLens" class="hint wb-only">his notes are written backwards —<br>hold the mirror over them
     <svg width="40" height="22" viewBox="0 0 40 22"><path d="M2 14 C12 20, 26 18, 37 6 M37 6 l-6 1.5 M37 6 l-1 6"/></svg></div>
+  <div id="hintPick" class="hint wb-only">tap any part<br>to read about it
+    <svg width="34" height="30" viewBox="0 0 34 30"><path d="M3 28 C4 16, 14 7, 30 4 M30 4 l-6 -1.5 M30 4 l-4 5"/></svg></div>
   <div id="toast" role="status"></div>
   <div class="caption" id="cap"></div>
   <div id="turn"></div>
@@ -354,9 +416,9 @@
 </nav>
 <div id="tools" class="ui">
   <button type="button" id="sndBtn" aria-pressed="false">Sound: off</button>
-  <button type="button" id="recBtn" aria-pressed="false" aria-controls="drawer">Record</button>
+  <button type="button" id="recBtn" class="maker-only" aria-pressed="false" aria-controls="drawer">Record</button>
 </div>
-<div id="drawer" class="ui" hidden>
+<div id="drawer" class="ui maker-only" hidden>
   <div class="row"><span>MODE</span><div class="seg" role="group" aria-label="Mode">
     <button type="button" data-mode="wb" aria-pressed="true">Workbench</button>
     <button type="button" data-mode="cine" aria-pressed="false">Cinematic</button></div></div>
@@ -374,21 +436,24 @@
 
 <div id="bench" class="ui wb-only">
   <div class="crankWrap">
-    <div id="hintCrank" class="hint"><span class="fine">scroll, or </span>turn the crank
-      <svg width="30" height="34" viewBox="0 0 30 34"><path d="M4 2 C2 14, 8 24, 22 30 M22 30 l-6 -0.5 M22 30 l-3 -5"/></svg></div>
-    <div id="crank" role="slider" tabindex="0" aria-label="Drive crank: drag it round, scroll, or hold Space" aria-valuemin="0" aria-valuemax="120" aria-valuenow="0"><div id="crankArm"></div><i></i></div>
-    <div class="plaque brass"><b><span id="rpm">0</span><small>RPM</small></b>
+    <div id="hintCrank" class="hint lit"><span class="fine">scroll, or </span>turn the crank
+      <svg width="26" height="30" viewBox="0 0 26 30"><path d="M4 2 C2 12, 7 21, 19 27 M19 27 l-6 -0.5 M19 27 l-3 -5"/></svg></div>
+    <div id="crank" class="lit" role="slider" tabindex="0" aria-label="Drive crank: drag it round, scroll, or hold Space. Tap it to stop or start the machine." aria-valuemin="0" aria-valuemax="120" aria-valuenow="0"><div id="crankArm"><b class="dial"></b></div><i></i></div>
+    <div class="plaque brass lit maker-only"><b><span id="rpm">0</span><small>RPM</small></b>
       <button type="button" id="autoBtn" aria-pressed="true" aria-label="Auto-drive"><i></i>AUTO</button></div>
   </div>
-  <div class="plate brass" role="group" aria-label="Visual style">
+  <div class="plate brass lit maker-only" role="group" aria-label="Visual style">
     <button type="button" data-style="ink" aria-pressed="false">INK</button>
     <button type="button" data-style="half" aria-pressed="true">HALF</button>
     <button type="button" data-style="solid" aria-pressed="false">TIMBER</button>
   </div>
-  <div class="ruler brass">
-    <input id="explode" type="range" min="0" max="100" value="0" aria-label="Explode and inspect">
-    <div class="nums"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
-    <span class="lbl">EXPLODE</span>
+  <div class="rulerWrap">
+    <div id="hintRule" class="hint lit">slide to pull it apart
+      <svg width="26" height="34" viewBox="0 0 26 34"><path d="M18 2 C8 6, 4 16, 8 31 M8 31 l-5 -4 M8 31 l3.4 -5.4"/></svg></div>
+    <div class="ruler brass lit">
+      <input id="explode" type="range" min="0" max="100" value="0" aria-label="Pull the machine apart">
+      <div class="nums"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+    </div>
   </div>
 </div>
 <div id="transport" class="ui cine-only">
@@ -414,6 +479,26 @@ const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, pr
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 200);
+
+// Aged brass: one small repeating tile of mottling, pits and hairline scratches, laid over every brass thing on the desk
+(() => {
+  const S = 176, c = document.createElement('canvas'), x = c.getContext('2d'), r = rng(41);
+  c.width = c.height = S;
+  x.fillStyle = '#808080'; x.fillRect(0, 0, S, S);
+  const wrap = (fn) => { for (const dx of [-S, 0, S]) for (const dy of [-S, 0, S]) { x.save(); x.translate(dx, dy); fn(); x.restore(); } };
+  for (let i = 0; i < 54; i++) {
+    const px = r() * S, py = r() * S, rad = 7 + r() * 30, a = 0.06 + r() * 0.13, col = r() < 0.5 ? '40,30,12' : '255,244,214';
+    wrap(() => { const g = x.createRadialGradient(px, py, 0, px, py, rad); g.addColorStop(0, `rgba(${col},${a})`); g.addColorStop(1, `rgba(${col},0)`); x.fillStyle = g; x.fillRect(px - rad, py - rad, 2 * rad, 2 * rad); });
+  }
+  x.lineCap = 'round';
+  for (let i = 0; i < 170; i++) {
+    const px = r() * S, py = r() * S, len = 5 + r() * 40, ang = (r() - 0.5) * 0.5 + (r() < 0.12 ? 1.2 : 0), a = 0.06 + r() * 0.16;
+    x.strokeStyle = r() < 0.5 ? `rgba(30,22,8,${a})` : `rgba(255,246,220,${a})`; x.lineWidth = 0.4 + r() * 0.5;
+    wrap(() => { x.beginPath(); x.moveTo(px, py); x.lineTo(px + Math.cos(ang) * len, py + Math.sin(ang) * len); x.stroke(); });
+  }
+  for (let i = 0; i < 110; i++) { x.fillStyle = `rgba(26,18,6,${0.12 + r() * 0.25})`; x.beginPath(); x.arc(r() * S, r() * S, 0.3 + r() * 0.8, 0, 6.2832); x.fill(); }
+  document.documentElement.style.setProperty('--brassTex', `url(${c.toDataURL('image/png')})`);
+})();
 
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const ss = (a, b, x) => { const t = clamp((x - a) / (b - a)); return t * t * (3 - 2 * t); };
@@ -558,20 +643,23 @@ bg.frustumCulled = false; bg.renderOrder = -10;
 scene.add(bg);
 
 // Candle-light: one multiply pass over everything, which also draws the split line so it matches the shader edge exactly
-const lightU = { uSplitVis: { value: 0 }, uFlick: { value: 0 } };
+const lightU = { uSplitVis: { value: 0 }, uFlick: { value: 0 }, uSplitHot: { value: 0 } };
 const light = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
-  uniforms: { uRes: shared.uRes, uDpr: shared.uDpr, uSplitX: shared.uSplitX, ...lightU },
+  uniforms: { uRes: shared.uRes, uDpr: shared.uDpr, uSplitX: shared.uSplitX, uSheet: paperGen.uniforms.uSheet, ...lightU },
   vertexShader: `void main(){ gl_Position = vec4(position.xy, 0.0, 1.0); }`,
-  fragmentShader: NOISE_GLSL + `uniform vec2 uRes; uniform float uDpr, uSplitX, uSplitVis, uFlick;` + SPLIT_GLSL + /* glsl */`
+  fragmentShader: NOISE_GLSL + `uniform vec2 uRes; uniform float uDpr, uSplitX, uSplitVis, uFlick, uSplitHot; uniform vec4 uSheet;` + SPLIT_GLSL + /* glsl */`
     void main(){
       vec2 uv = gl_FragCoord.xy / uRes; float asp = uRes.x / uRes.y;
       float dn = distance(vec2(uv.x*asp, uv.y), vec2(0.42*asp, 0.60)) / (0.5*length(vec2(asp, 1.0)));
       float fall = smoothstep(0.30, 1.30, dn);
       vec3 c = mix(vec3(1.0), vec3(0.62, 0.52, 0.42), fall) * (1.0 - 0.035*uFlick*(0.4 + fall));
-      if (uSplitVis > 0.001 && abs(uv.x - uSplitX) < 0.04) {
+      // the divider is ink on the sheet: it stops where the paper stops
+      float vis = uSplitVis * smoothstep(uSheet.y - 2.0*uDpr, uSheet.y + 5.0*uDpr, gl_FragCoord.y) * (1.0 - smoothstep(uSheet.w - 5.0*uDpr, uSheet.w + 2.0*uDpr, gl_FragCoord.y));
+      if (vis > 0.001 && abs(uv.x - uSplitX) < 0.04) {
         float e = abs(splitCoord() - uSplitX) * uRes.x / uDpr;
-        c *= mix(vec3(1.0), vec3(0.50, 0.25, 0.16), (1.0 - smoothstep(0.4, 1.5, e)) * 0.85 * uSplitVis);
-        c *= 1.0 - 0.10*uSplitVis*(1.0 - smoothstep(0.0, 10.0, e));
+        // the line swells and its wet edge spreads while a hand is on it
+        c *= mix(vec3(1.0), vec3(0.50, 0.25, 0.16), (1.0 - smoothstep(0.4 + 0.5*uSplitHot, 1.5 + 1.2*uSplitHot, e)) * 0.85 * vis);
+        c *= 1.0 - (0.10 + 0.07*uSplitHot)*vis*(1.0 - smoothstep(0.0, 10.0 + 8.0*uSplitHot, e));
       }
       gl_FragColor = vec4(c, 1.0);
     }`,
@@ -580,6 +668,20 @@ const light = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMate
 }));
 light.frustumCulled = false; light.renderOrder = 100;
 scene.add(light);
+// The drawing lives on the sheet: whatever the machine would put beyond the paper's edge is covered again by the desk
+const deskMask = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+  uniforms: { uRes: shared.uRes, uDpr: shared.uDpr, uPaper: shared.uPaper, uSheet: paperGen.uniforms.uSheet },
+  vertexShader: QUAD_VS,
+  fragmentShader: /* glsl */`uniform vec2 uRes; uniform float uDpr; uniform vec4 uSheet; uniform sampler2D uPaper;
+    void main(){
+      vec2 f = gl_FragCoord.xy; float m = 5.0*uDpr;
+      if (f.x > uSheet.x - m && f.x < uSheet.z + m && f.y > uSheet.y - m && f.y < uSheet.w + m) discard;
+      gl_FragColor = vec4(texture2D(uPaper, f / uRes).rgb, 1.0);
+    }`,
+  transparent: true, depthTest: false, depthWrite: false,
+}));
+deskMask.frustumCulled = false; deskMask.renderOrder = 99;
+scene.add(deskMask);
 
 const VERT = /* glsl */`
   attribute vec3 aObj;
@@ -1399,7 +1501,7 @@ function measure(mc, e, out) {
 /* ---------- Content: titles, mirror-script notes, inspection notes ---------- */
 const MACHINES = {
   orni: buildMachine({
-    id: 'orni', seed: 7, defs: orniDefs(), kin: orniKin, fitK: [0.76, 0.74], storyK: 8.4, az0: 0.42,
+    id: 'orni', seed: 7, defs: orniDefs(), kin: orniKin, fitK: [0.76, 0.74], storyK: 8.4, az0: 0.42, azTall: 1.0,   // on a tall sheet it starts three-quarter on, so both wings fit
     folio: '846', paperSeed: 0, groundY: 0.05, groundDrop: 1.5, shadowBlur: 0.055, shadowK: 0.8,
     verso: ['dell aria che si move sotto l ala', 'pesa l omo libbre dugento', 'fa che la tela sia sottile e forte', 'prova prima in piccolo modello',
       'sopra un lago, acciò che nel cadere', 'non ti facci male', 'il nibbio batte l ali poco', 'e si lascia portare dal vento'],
@@ -1427,7 +1529,7 @@ const MACHINES = {
     },
   }),
   cart: buildMachine({
-    id: 'cart', seed: 11, defs: cartDefs(), kin: cartKin, fitK: [0.86, 0.98], storyK: 3.2, az0: 0.75,
+    id: 'cart', seed: 11, defs: cartDefs(), kin: cartKin, fitK: [0.86, 0.98], storyK: 3.2, az0: 0.75, spill: 1.0,
     folio: '812', paperSeed: 13.7, groundY: -0.06, groundDrop: 1.3, shadowBlur: 0.022, shadowK: 1.15,
     verso: ['carro che va sanza cavallo', 'la molla si carica con la chiave', 'e si scarica a poco a poco', 'per la festa del duca',
       'fa i denti di legno duro', 'ogni rota tiri la sua', 'il tempo si misura col bilanciere', 'prova e riprova'],
@@ -1635,7 +1737,10 @@ const wb = {
   revealT: 0, az: 0.42, el: 0.34, zoom: 1, azV: 0, elV: 0, lastTouch: -1e9, azTo: null,
   sel: null, selPart: null, focus: null, dim: 0, space: false, dragCrank: false,
   tgt: new THREE.Vector3(), dist: 0, camInit: false,
+  peekT: reduceMotion ? null : 0, splitOff: 0, hoverSplit: false, atLo: false, atHi: false, idle: false, lit: 1,
 };
+const done = {};       // things the visitor has already tried, so their prompts stay away
+let maker = false;     // maker tools (recording drawer, speed plaque, style plate) — only with #maker=1
 const lens = { x: 0, y: 0, home: true, drag: false };
 const hover = { part: null, x: 0, y: 0, a: 0 };
 const C_INK = new THREE.Color(0x3b2614), C_CHALK = new THREE.Color(0x8c3b22);
@@ -1644,13 +1749,18 @@ let mirrorOn = false, mirrorV = 0;
 let userAz = 0, userEl = 0, userZoom = 1;
 let aspectMode = 'full';
 // geometry of the page inside the stage, css px (set by resize)
-const page = { w: 1, h: 1, sx: 0, st: 0, sb: 0, bh: 0, full: true, type: 1 };
+const page = { w: 1, h: 1, l: 0, t: 0, sx: 0, st: 0, sb: 0, bh: 0, full: true, type: 1, cy: 0.5, compact: false, portrait: window.innerHeight > window.innerWidth * 1.15 };
 
 /* ---------- Camera ---------- */
 const camTgt = new THREE.Vector3(), LOOK = new THREE.Vector3(0.15, 1.8, 0);
-function baseDist(R) {
+function baseDist(R, spill = 1.3) {
   const vf = THREE.MathUtils.degToRad(camera.fov) / 2, hf = Math.atan(Math.tan(vf) * camera.aspect);
-  return R / Math.sin(Math.min(vf, hf * (camera.aspect < 1 ? 1.3 : 1))); // portrait: let the wingtips run off the page a little
+  return R / Math.sin(Math.min(vf, hf * (camera.aspect < 1 ? spill : 1))); // portrait: let the wingtips run off the page a little
+}
+// The candle-light falloff the shader lays over the page, worked out for something lying at (x, y) px of the stage
+function litAt(x, y) {
+  const asp = page.w / page.h, dn = Math.hypot((x / page.w - 0.42) * asp, (1 - y / page.h) - 0.60) / (0.5 * Math.hypot(asp, 1));
+  return 1 - 0.36 * ss(0.30, 1.30, dn);
 }
 function placeCamera(az, el, tgt, dist) {
   camera.position.set(tgt.x + dist * Math.cos(el) * Math.cos(az), tgt.y + dist * Math.sin(el), tgt.z + dist * Math.cos(el) * Math.sin(az));
@@ -1808,13 +1918,15 @@ function paint(S, mOf) {
 
   // margin notes
   if (S.notes > 0.001) {
-    const rightX = w - page.sx * dpr - 5.5 * s, font = `italic ${2.3 * s}px ${FONT_B}`, y0 = page.st * dpr + (h - (page.st + page.sb) * dpr) * 0.2;
+    // wide sheet: in the right margin beside the machine. Tall sheet: under it, where they make way for the note on an inspected part
+    const rightX = w - page.sx * dpr - 5.5 * s, font = `italic ${2.3 * s}px ${FONT_B}`, y0 = page.st * dpr + (h - (page.st + page.sb) * dpr) * (page.portrait ? 0.665 : 0.2);
+    const na = page.portrait ? 1 - clamp(S.dim * 1.6) : 1;
     mc.notesIt.forEach((t, i) => {
       const mi = mOf(i + 1);
       octx.save();
       octx.translate(rightX, y0 + i * 3.4 * s);
       octx.rotate(-0.025);
-      flipText(t, mc.notesEn[i], (tw) => -tw / 2, 0, mi, font, INKC + (S.notes * (1.25 + 1.0 * mi)).toFixed(3) + ')', 0.3 * mi);
+      flipText(t, mc.notesEn[i], (tw) => -tw / 2, 0, mi, font, INKC + (S.notes * na * (1.25 + 1.0 * mi)).toFixed(3) + ')', 0.3 * mi * na);
       octx.restore();
     });
   }
@@ -1851,13 +1963,28 @@ function paint(S, mOf) {
     if (tmp.z > 1) return;
     const x = tmp.x, y = tmp.y;
     let dx = x - cx, dy = y - cy; const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
-    const right = (dx || 1) >= 0;
-    items.push({ p, i, a, x, y, right, lx: x + (right ? 1 : -1) * 7 * s, ly: y + dy * 2.5 * s });
+    // a callout goes outward from the middle, unless the sheet ends first: then it turns inward, or its leader is cut short
+    if (p.twS !== s) { octx.font = `italic ${2.5 * s}px ${FONT_B}`; p.tw = Math.max(octx.measureText(p.it).width, octx.measureText(p.en).width, octx.measureText(p.enSub).width * 0.8); p.twS = s; }
+    const pad = page.sx * dpr + 1.4 * s, need = 7.8 * s + p.tw, roomR = w - pad - x, roomL = x - pad;
+    let right = (dx || 1) >= 0;
+    if (right && need > roomR && roomL > roomR) right = false; else if (!right && need > roomL && roomR > roomL) right = true;
+    const reach = clamp((right ? roomR : roomL) - 0.8 * s - p.tw, 1.6 * s, 7 * s);
+    items.push({ p, i, a, x, y, right, lx: x + (right ? 1 : -1) * reach, ly: y + dy * 2.5 * s });
   });
+  // a tall sheet is too narrow to label parts where they hang: the names go in two columns down the margins, as in a printed plate
+  const tall = page.portrait, top = page.st * dpr + 17 * s, foot = (page.h - page.sb) * dpr - 5 * s;
+  if (tall) {
+    const padM = page.sx * dpr + 3.2 * s, half = Math.ceil(items.length / 2), colW = [0, 0];
+    items.sort((a, b) => a.x - b.x).forEach((it, k) => { it.right = k >= half; colW[+it.right] = Math.max(colW[+it.right], it.p.tw); });
+    items.forEach((it) => { it.lx = it.right ? w - padM - colW[1] - 0.8 * s : padM + colW[0] + 0.8 * s; it.ly = it.y; });
+  }
   // keep callouts on the same side from stacking on top of each other
   [true, false].forEach((side) => {
     const col = items.filter((it) => it.right === side).sort((a, b) => a.ly - b.ly);
+    if (tall && col.length) col[0].ly = Math.max(col[0].ly, top);
     for (let k = 1; k < col.length; k++) if (col[k].ly < col[k - 1].ly + 5.4 * s) col[k].ly = col[k - 1].ly + 5.4 * s;
+    const over = tall && col.length ? col[col.length - 1].ly - foot : 0;
+    if (over > 0) col.forEach((it) => { it.ly -= over; });
   });
   items.forEach(({ p, i, a, x, y, right, lx, ly }) => {
     octx.save();
@@ -1895,11 +2022,15 @@ function drawOverlay(S, m) {
 function resize() {
   const W = window.innerWidth, H = window.innerHeight, body = document.body;
   const clean = body.classList.contains('clean'), full = aspectMode === 'full', narrow = W < 700;
+  page.compact = narrow || H < 520; page.portrait = full && H > W * 1.15;
+  body.classList.toggle('compact', page.compact); body.classList.toggle('squat', H < 520); body.classList.toggle('portrait', page.portrait);
+  body.classList.toggle('ui-full', full);
   const bottomEl = mode === 'wb' ? $('bench') : clean ? null : $('transport');
   const bh = bottomEl ? H - bottomEl.getBoundingClientRect().top : 0, tabsH = clean ? 0 : 34;
   let w = W, h = H, l = 0, t = 0;
   page.full = full;
-  if (full) { page.sx = narrow ? 6 : 16; page.st = clean ? page.sx : tabsH + 9; page.sb = page.sx; }
+  // Full window: in the workbench the sheet stops above the strip of desk where the instruments lie; the cinematic timeline bar lies over its foot
+  if (full) { page.sx = narrow ? 6 : 16; page.st = clean ? page.sx : tabsH + 9; page.sb = mode === 'wb' ? bh : page.sx; }
   else {
     const [aw, ah] = aspectMode.split(':').map(Number);
     const top = tabsH + 14, availW = W - 32, availH = H - top - bh - 14;
@@ -1908,12 +2039,11 @@ function resize() {
     l = Math.floor((W - w) / 2); t = Math.floor(top + (availH - h) / 2);
     page.sx = page.st = page.sb = 0;
   }
-  page.w = w; page.h = h; page.bh = full ? bh : 0; page.type = h > w * 1.2 ? 1.32 : 1;
+  page.w = w; page.h = h; page.l = l; page.t = t; page.bh = full && mode !== 'wb' ? bh : 0; page.type = h > w * 1.2 ? 1.32 : 1;
   Object.assign(stage.style, { left: l + 'px', top: t + 'px', width: w + 'px', height: h + 'px' });
   const ps = stage.style;
   ps.setProperty('--s', (Math.min(w, h) / 100 * page.type) + 'px'); ps.setProperty('--sx', page.sx + 'px'); ps.setProperty('--st', page.st + 'px'); ps.setProperty('--sb', page.sb + 'px');
   body.style.setProperty('--barh', bh + 'px');
-  body.classList.toggle('ui-full', full);
   Object.assign($('tabs').style, { left: (l + page.sx + (narrow ? 8 : 22)) + 'px', top: (t + page.st - 31) + 'px' });
 
   renderer.setSize(w, h, false);
@@ -1924,7 +2054,9 @@ function resize() {
   lineMats.forEach((lm) => { lm.resolution.set(w, h); lm.linewidth = lw; });
   ov.width = Math.round(w * dpr); ov.height = Math.round(h * dpr);
   camera.aspect = w / h;
-  if (full) camera.setViewOffset(w, h, 0, Math.round((page.bh - page.st) * 0.45), w, h); else camera.clearViewOffset();
+  // the machine sits in the middle of the free sheet; on a tall sheet a little above it, leaving the foot for the notes and the mirror
+  page.cy = page.portrait ? 0.43 : 0.5;
+  if (full) camera.setViewOffset(w, h, 0, Math.round(h / 2 - (page.st + page.cy * (h - page.st - page.sb - page.bh))), w, h); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
   bakePaper();
   if (!full) bakeDesk(W, H);
@@ -1932,10 +2064,17 @@ function resize() {
   const sr = stage.getBoundingClientRect(), tr = $('tMirror').getBoundingClientRect();
   titleBox.x = tr.left - sr.left; titleBox.y = tr.top - sr.top + tr.height * 0.78;
   if (lens.home) homeLens();
+  document.querySelectorAll('.lit').forEach((el) => {
+    const r = el.getBoundingClientRect();
+    if (r.width) el.style.setProperty('--lit', litAt(r.left + r.width / 2 - l, r.top + r.height / 2 - t).toFixed(3));
+  });
+  Object.assign($('hintPick').style, { left: (page.sx + 20) + 'px', top: Math.round(page.st + (h - page.st - page.sb) * (page.portrait ? 0.60 : 0.72)) + 'px' });
 }
 function homeLens() {
   const r = $('lens').offsetWidth / 2 || 59;
-  lens.x = page.w - page.sx - r - (page.w < 700 ? 30 : 62); lens.y = page.st + r + (page.w < 700 ? 54 : 22); lens.home = true;
+  if (page.portrait) { lens.x = page.w - page.sx - r - 32; lens.y = page.h - page.sb - r - 38; }   // tall sheet: at the foot, beside the mirror writing
+  else { lens.x = page.w - page.sx - r - (page.compact ? 34 : 62); lens.y = page.st + r + 22; }
+  lens.home = true;
 }
 window.addEventListener('resize', resize);
 
@@ -2031,6 +2170,16 @@ function stepWorkbench(dt, now) {
     wb.phase += wb.omega * dt;
   }
   wb.e += (wb.eGoal - wb.e) * (1 - Math.exp(-dt * 8));
+  // once the drawing is finished the divider slides a little each way by itself, to show what it is for
+  if (wb.peekT !== null) {
+    if (done.split || wb.style !== 'half') wb.peekT = null;
+    else if (wb.revealT >= 1) {
+      wb.peekT += dt;
+      const u = (wb.peekT - 0.8) / 2.8;
+      if (u >= 1) { wb.peekT = null; wb.splitGoal = 0.5; }
+      else if (u > 0) wb.splitGoal = 0.5 + 0.1 * Math.sin(u * TAU) * (1 - 0.35 * u);
+    }
+  }
   const d = wb.splitGoal - wb.split;
   wb.split += Math.sign(d) * Math.min(Math.abs(d), dt * (wb.dragSplit ? 5 : 1.5));
   if (wb.revealT < 1) wb.revealT = Math.min(1, wb.revealT + dt / (reduceMotion ? 0.01 : 2.2));
@@ -2043,7 +2192,7 @@ function stepWorkbench(dt, now) {
   if (wb.azTo !== null) { wb.az += (wb.azTo - wb.az) * (1 - Math.exp(-dt * 3.2)); if (Math.abs(wb.azTo - wb.az) < 0.003) wb.azTo = null; }
   else if (!reduceMotion && !wb.sel && !dragging && now - wb.lastTouch > 6000) wb.az += 0.085 * dt;
   const tgtGoal = tmp2.copy(mc.fitA.c).lerp(mc.fitE.c, eG);
-  let distGoal = baseDist(lerp(mc.fitA.r, mc.fitE.r, eG)) * wb.zoom;
+  let distGoal = baseDist(lerp(mc.fitA.r, mc.fitE.r, eG), lerp(mc.spill || 1.13, 1.0, eG)) * wb.zoom;
   if (wb.sel && wb.selPart) {
     const p = wb.selPart;
     focusPt.copy(p.base).addScaledVector(p.off, p.ei).add(p.anchorV);
@@ -2065,9 +2214,16 @@ function stepWorkbench(dt, now) {
   $('crankArm').style.transform = `rotate(${(wb.phase % TAU).toFixed(3)}rad)`;
   const rpm = Math.round(Math.abs(wb.omega) / TAU * 60);
   if ($('rpm').textContent !== String(rpm)) { $('rpm').textContent = rpm; $('crank').setAttribute('aria-valuenow', rpm); }
-  const [lo, hi] = splitRange(), sxp = clamp(wb.split, lo, hi) * page.w, syp = page.st + (page.h - page.st - page.sb - page.bh) * 0.9;
+  // the rider keeps to the lower edge of the sheet, under the line it carries
+  const [lo, hi] = splitRange(), sxp = clamp(wb.split, lo, hi) * page.w, syp = page.full ? page.h - page.sb : page.h - 22;
   splitEl.style.setProperty('--x', sxp.toFixed(1) + 'px'); splitEl.style.setProperty('--y', syp.toFixed(1) + 'px');
-  $('hintSplit').style.left = sxp + 'px'; $('hintSplit').style.top = syp + 'px';
+  const atLo = wb.split <= lo + 0.035, atHi = wb.split >= hi - 0.035, lit = litAt(sxp, syp);
+  if (atLo !== wb.atLo) { wb.atLo = atLo; splitEl.classList.toggle('at-lo', atLo); }
+  if (atHi !== wb.atHi) { wb.atHi = atHi; splitEl.classList.toggle('at-hi', atHi); }
+  if (Math.abs(lit - wb.lit) > 0.006) { wb.lit = lit; splitEl.style.setProperty('--lit', lit.toFixed(3)); }
+  lightU.uSplitHot.value += ((wb.dragSplit || wb.hoverSplit ? 1 : 0) - lightU.uSplitHot.value) * (1 - Math.exp(-dt * 10));
+  const idle = !wb.auto && !wb.dragCrank && Math.abs(wb.omega) < 0.05;
+  if (idle !== wb.idle) { wb.idle = idle; crank.classList.toggle('idle', idle); }
   lensEl.style.setProperty('--x', lens.x.toFixed(1) + 'px'); lensEl.style.setProperty('--y', lens.y.toFixed(1) + 'px');
   $('hintLens').style.left = lens.x + 'px'; $('hintLens').style.top = lens.y + 'px';
 
@@ -2083,20 +2239,33 @@ function stepWorkbench(dt, now) {
 function placeNote() {
   if (!wb.sel || !wb.selPart) return;
   toScreen(tmp.copy(focusPt), page.w, page.h);
-  const x = tmp.x, y = tmp.y, nw = noteEl.offsetWidth, nh = noteEl.offsetHeight, gap = Math.min(70, page.w * 0.07);
-  const fitsL = x - gap - nw > page.sx + 12, fitsR = x + gap + nw < page.w - page.sx - 12;
-  const right = x < page.w * 0.5 ? !fitsL : fitsR;
-  const left = clamp(right ? x + gap : x - gap - nw, page.sx + 12, page.w - page.sx - nw - 12);
-  const top = clamp(y - nh * 0.4, page.st + 12 + (left < page.w * 0.45 ? page.h * 0.16 : 0), page.h - page.sb - page.bh - nh - 10);
+  const x = tmp.x, y = tmp.y, nw = noteEl.offsetWidth, nh = noteEl.offsetHeight, foot = page.h - page.sb - page.bh;
+  let left, top, nx, ny;
+  if (page.portrait) {
+    // a tall sheet has no side margin to write in: the note goes across the page under the part, above the mirror if it is still lying there
+    const floor = lens.home ? Math.min(foot - 12, lens.y - lensEl.offsetWidth / 2 - 4) : foot - 12;
+    left = (page.w - nw) / 2;
+    top = Math.max(page.st + 12, Math.min(Math.max(y + page.h * 0.085, page.st + (foot - page.st) * 0.6), floor - nh));
+    nx = left + 16; ny = top - 5;
+  } else {
+    const gap = Math.min(70, page.w * 0.07);
+    const fitsL = x - gap - nw > page.sx + 12, fitsR = x + gap + nw < page.w - page.sx - 12;
+    const right = x < page.w * 0.5 ? !fitsL : fitsR;
+    left = clamp(right ? x + gap : x - gap - nw, page.sx + 12, page.w - page.sx - nw - 12);
+    top = clamp(y - nh * 0.4, page.st + 12 + (left < page.w * 0.45 ? page.h * 0.16 : 0), foot - nh - 10);
+    const lr = lensEl.offsetWidth / 2;   // not under the mirror while it lies in its corner
+    if (lens.home && left + nw > lens.x - lr - 6 && top < lens.y + lr + 6) top = Math.min(lens.y + lr + 12, foot - nh - 10);
+    nx = right ? left - 6 : left + nw + 6; ny = top + Math.min(nh * 0.5, 30);
+  }
   noteEl.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
   const slot = noteEl.querySelector('.slot');
-  Object.assign(noteGeo, { on: true, ax: x, ay: y, nx: right ? left - 6 : left + nw + 6, ny: top + Math.min(nh * 0.5, 30),
+  Object.assign(noteGeo, { on: true, ax: x, ay: y, nx, ny,
     sx: left + (slot ? slot.offsetLeft : 0), sy: top + (slot ? slot.offsetTop : 0), sh: slot ? slot.offsetHeight : 20 });
 }
 function select(p) {
   if (!p) { wb.sel = null; noteEl.classList.remove('on'); return; }
   const info = mc.sys[p.sys];
-  wb.sel = p.sys; wb.selPart = p; wb.focus = [p.sys];
+  wb.sel = p.sys; wb.selPart = p; wb.focus = [p.sys]; did('pick');
   noteGeo.it = info[1]; noteGeo.en = info[0].toLowerCase();
   // written out word by word, as if the quill were still moving
   let n = 0;
@@ -2142,7 +2311,7 @@ function swapMachine(id, redraw) {
   mc = MACHINES[id];
   Object.values(MACHINES).forEach((m) => { m.root.visible = m === mc; });
   $('tName').textContent = mc.name; $('tSub').textContent = mc.sub;
-  select(null); wb.dim = 0; wb.focus = null; noteGeo.on = false; wb.camInit = false; wb.az = mc.az0; wb.azTo = null; wb.azV = wb.elV = 0;
+  select(null); wb.dim = 0; wb.focus = null; noteGeo.on = false; wb.camInit = false; wb.az = page.portrait && mc.azTall !== undefined ? mc.azTall : mc.az0; wb.azTo = null; wb.azV = wb.elV = 0;
   hover.part = null; hover.a = 0;
   if (redraw) wb.revealT = 0;
   if (paperRT) resize();
@@ -2177,7 +2346,7 @@ function setMode(m) {
   press('button[data-mode]', (b) => b.dataset.mode === m);
   select(null); wb.dim = 0; wb.focus = null; noteGeo.on = false; hover.part = null; hover.a = 0;
   allParts.forEach((p) => { p.glowU.value = 0; p.lineMat.color.copy(C_INK); });
-  capEl.style.opacity = 0;
+  capEl.style.opacity = 0; lightU.uSplitHot.value = 0;
   if (m === 'cine') { T = 0; setPlaying(true); userAz = userEl = 0; userZoom = 1; if (PRESETS[preset].machine) setMachine(PRESETS[preset].machine, false, false); }
   else { wb.revealT = 1; wb.camInit = false; }
   resize();
@@ -2193,7 +2362,9 @@ function setPlaying(v) { playing = v; playBtn.textContent = v ? 'PAUSE' : 'PLAY'
 function setMirror(v) { mirrorOn = v; lensEl.classList.toggle('flip', v); lensEl.setAttribute('aria-pressed', String(v)); }
 function setExplode(pct) { wb.eGoal = pct / 100; $('explode').value = pct; }
 function toggleClean() { document.body.classList.toggle('clean'); resize(); }
-function did(what) { document.body.classList.add('did-' + what); }
+function did(what) { if (!done[what]) { done[what] = true; document.body.classList.add('did-' + what); } }
+function setAuto(v, brake) { wb.auto = v; $('autoBtn').setAttribute('aria-pressed', String(v)); if (!v && brake) wb.omega *= 0.2; Snd.brass(); did('drive'); }
+function setMaker(v) { maker = v; document.body.classList.toggle('maker', v); if (!v) setDrawer(false); if (paperRT) resize(); }
 
 /* ---------- Interaction ---------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
@@ -2208,12 +2379,14 @@ function pick(ev) {
 }
 function nearSplit(ev) {
   if (mode !== 'wb') return false;
-  const r = stage.getBoundingClientRect(), [lo, hi] = splitRange();
-  return Math.abs(ev.clientX - r.left - clamp(wb.split, lo, hi) * page.w) < 16 && ev.clientY - r.top > page.st + 6;
+  if (splitEl.contains(ev.target)) return true;
+  if (ev.pointerType !== 'mouse') return false;   // a finger takes the rider; the line is left alone, so it cannot be caught by accident while turning the machine
+  const r = stage.getBoundingClientRect(), [lo, hi] = splitRange(), y = ev.clientY - r.top;
+  return Math.abs(ev.clientX - r.left - clamp(wb.split, lo, hi) * page.w) < 12 && y > page.st + 6 && y < page.h - page.sb + 18;
 }
 // Dragging the divider: inside the page it follows the hand; pushed to either edge it lets go into all-ink or all-timber
 function dragSplitTo(ev) {
-  const r = stage.getBoundingClientRect(), [lo, hi] = splitRange(), u = (ev.clientX - r.left) / page.w;
+  const r = stage.getBoundingClientRect(), [lo, hi] = splitRange(), u = (ev.clientX - r.left - wb.splitOff) / page.w;
   if (u > hi - 0.006) wb.splitGoal = 1.06; else if (u < lo + 0.006) wb.splitGoal = -0.06;
   else { wb.splitGoal = u; if (Math.abs(wb.split - u) < 0.25) wb.split = u; }
   wb.style = wb.splitGoal > 1 ? 'ink' : wb.splitGoal < 0 ? 'solid' : 'custom';
@@ -2223,13 +2396,20 @@ function dragSplitTo(ev) {
 }
 const zoomBy = (z) => { if (mode === 'wb') wb.zoom = clamp(wb.zoom * z, 0.4, 1.8); else userZoom = clamp(userZoom * z, 0.55, 1.8); };
 const pointers = new Map();
-let px = 0, py = 0, moved = 0, lastHover = 0, pinchD = 0, moveT = 0;
+let px = 0, py = 0, moved = 0, lastHover = 0, pinchD = 0, moveT = 0, riderDown = -1e9, riderReset = -1e9;
 stage.addEventListener('pointerdown', (ev) => {
   pointers.set(ev.pointerId, [ev.clientX, ev.clientY]);
   stage.setPointerCapture(ev.pointerId);
   if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinchD = Math.hypot(a[0] - b[0], a[1] - b[1]); dragging = false; wb.dragSplit = false; return; }
   moved = 0; px = ev.clientX; py = ev.clientY; moveT = performance.now();
-  if (nearSplit(ev)) { wb.dragSplit = true; splitEl.classList.add('live'); dragSplitTo(ev); return; }
+  if (nearSplit(ev)) {
+    // taken by the rider, it keeps its place under the finger; taken by the line, the line comes to the pointer
+    const [lo, hi] = splitRange(), onRider = splitEl.contains(ev.target), now = performance.now();
+    if (onRider && now - riderDown < 380) { riderDown = -1e9; riderReset = now; setStyle('half'); Snd.brass(); did('split'); return; }   // two quick taps on the rider send it back to the middle
+    if (onRider) riderDown = now;
+    wb.splitOff = onRider ? ev.clientX - stage.getBoundingClientRect().left - clamp(wb.split, lo, hi) * page.w : 0;
+    wb.dragSplit = true; splitEl.classList.add('live'); dragSplitTo(ev); return;
+  }
   dragging = true; stage.classList.add('dragging'); wb.azV = wb.elV = 0;
 });
 stage.addEventListener('pointermove', (ev) => {
@@ -2246,6 +2426,7 @@ stage.addEventListener('pointermove', (ev) => {
       const on = nearSplit(ev), sr = stage.getBoundingClientRect();
       hover.part = on ? null : pick(ev); hover.x = ev.clientX - sr.left; hover.y = ev.clientY - sr.top;
       stage.classList.toggle('onsplit', on); stage.classList.toggle('pickable', !!hover.part);
+      if (on !== wb.hoverSplit) { wb.hoverSplit = on; splitEl.classList.toggle('hot', on); }
     }
     return;
   }
@@ -2270,8 +2451,8 @@ function endPointer(ev, cancelled) {
 }
 stage.addEventListener('pointerup', (ev) => endPointer(ev, false));
 stage.addEventListener('pointercancel', (ev) => endPointer(ev, true));
-stage.addEventListener('pointerleave', () => { hover.part = null; });
-stage.addEventListener('dblclick', (ev) => { if (ev.target === lensEl || lensEl.contains(ev.target)) return; userAz = 0; userEl = 0; userZoom = 1; wb.zoom = 1; wb.el = 0.34; });
+stage.addEventListener('pointerleave', () => { hover.part = null; wb.hoverSplit = false; splitEl.classList.remove('hot'); });
+stage.addEventListener('dblclick', (ev) => { if (ev.target === lensEl || lensEl.contains(ev.target) || performance.now() - riderReset < 600) return; userAz = 0; userEl = 0; userZoom = 1; wb.zoom = 1; wb.el = 0.34; });
 function pump(deltaY) { wb.omega = clamp(wb.omega + clamp(Math.abs(deltaY), 0, 120) * 0.012 * (deltaY > 0 ? 1 : -1), -OMEGA_MAX, OMEGA_MAX); did('drive'); }
 // Scrolling anywhere on the page feeds the flywheel; pinch (or ctrl-scroll) zooms
 stage.addEventListener('wheel', (ev) => {
@@ -2315,19 +2496,25 @@ lensEl.addEventListener('keydown', (ev) => {
 
 // Brass crank: drag round it to turn the machine by hand, scroll over it to kick the flywheel
 const crank = $('crank');
-let crankAng = 0, crankT = 0;
+let crankAng = 0, crankT = 0, crankTurn = 0, crankDown = 0;
 const angAt = (ev) => { const r = crank.getBoundingClientRect(); return Math.atan2(ev.clientX - (r.left + r.width / 2), -(ev.clientY - (r.top + r.height / 2))); };
-crank.addEventListener('pointerdown', (ev) => { wb.dragCrank = true; crankAng = angAt(ev); crankT = performance.now(); crank.setPointerCapture(ev.pointerId); ev.preventDefault(); did('drive'); Snd.brass(0.7); });
+crank.addEventListener('pointerdown', (ev) => { wb.dragCrank = true; crankAng = angAt(ev); crankT = crankDown = performance.now(); crankTurn = 0; crank.setPointerCapture(ev.pointerId); ev.preventDefault(); did('drive'); Snd.brass(0.7); });
 crank.addEventListener('pointermove', (ev) => {
   if (!wb.dragCrank) return;
   const a = angAt(ev), now = performance.now();
   let d = a - crankAng; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU;
   const dt = Math.max(0.004, (now - crankT) / 1000);
-  wb.phase += d;
+  wb.phase += d; crankTurn += Math.abs(d);
   wb.omega = clamp(lerp(wb.omega, d / dt, 0.35), -OMEGA_MAX, OMEGA_MAX);
   crankAng = a; crankT = now;
 });
-const endCrank = () => { if (wb.dragCrank && performance.now() - crankT > 120) wb.omega = 0; wb.dragCrank = false; };
+const endCrank = (ev) => {
+  if (!wb.dragCrank) return;
+  const now = performance.now();
+  if (ev.type === 'pointerup' && crankTurn < 0.12 && now - crankDown < 450) setAuto(!wb.auto, true);   // a tap: a hand laid on the wheel stops it, another sets it going
+  else if (now - crankT > 120) wb.omega = 0;
+  wb.dragCrank = false;
+};
 crank.addEventListener('pointerup', endCrank);
 crank.addEventListener('pointercancel', endCrank);
 crank.addEventListener('wheel', (ev) => { ev.preventDefault(); pump(ev.deltaY); }, { passive: false });
@@ -2337,13 +2524,13 @@ playBtn.addEventListener('click', () => setPlaying(!playing));
 scrub.addEventListener('input', () => { scrubbing = true; T = (scrub.value / 1000) * PRESETS[preset].dur * 0.9999; setPlaying(false); });
 scrub.addEventListener('change', () => { scrubbing = false; });
 let lastStep = 0;
-$('explode').addEventListener('input', (ev) => { const v = +ev.target.value; setExplode(v); if (Math.round(v / 5) !== lastStep) { lastStep = Math.round(v / 5); Snd.brass(0.35); } });
+$('explode').addEventListener('input', (ev) => { const v = +ev.target.value; setExplode(v); did('explode'); if (Math.round(v / 5) !== lastStep) { lastStep = Math.round(v / 5); Snd.brass(0.35); } });
 document.querySelectorAll('[data-m]').forEach((b) => b.addEventListener('click', () => setMachine(b.dataset.m)));
 document.querySelectorAll('button[data-mode]').forEach((b) => b.addEventListener('click', () => setMode(b.dataset.mode)));
 document.querySelectorAll('[data-style]').forEach((b) => b.addEventListener('click', () => { setStyle(b.dataset.style); Snd.brass(); did('split'); }));
 document.querySelectorAll('[data-preset]').forEach((b) => b.addEventListener('click', () => setPreset(b.dataset.preset)));
 document.querySelectorAll('[data-ar]').forEach((b) => b.addEventListener('click', () => { aspectMode = b.dataset.ar; press('[data-ar]', (x) => x === b); resize(); }));
-$('autoBtn').addEventListener('click', () => { wb.auto = !wb.auto; $('autoBtn').setAttribute('aria-pressed', String(wb.auto)); Snd.brass(); did('drive'); });
+$('autoBtn').addEventListener('click', () => setAuto(!wb.auto));
 const capBtn = $('capBtn');
 capBtn.addEventListener('click', () => { const off = document.body.classList.toggle('no-captions'); capBtn.setAttribute('aria-pressed', String(!off)); });
 $('cleanBtn').addEventListener('click', toggleClean);
@@ -2373,12 +2560,13 @@ window.addEventListener('keydown', (ev) => {
   }
   if (inRange || ev.metaKey || ev.ctrlKey) return;
   const k = ev.key.toLowerCase();
-  if (k === 'h') toggleClean();
+  if (maker && k === 'h') toggleClean();
+  else if (maker && k === 'c') capBtn.click();
+  else if (maker && k === 'r') setDrawer(drawer.hidden);
+  else if (maker && k === 'a') setAuto(!wb.auto);
   else if (k === 'escape') { if (document.body.classList.contains('clean')) toggleClean(); else if (!drawer.hidden && !wb.sel) setDrawer(false); else select(null); }
   else if (k === 'm') { setMirror(!mirrorOn); did('lens'); }
   else if (k === 's') sndBtn.click();
-  else if (k === 'c') capBtn.click();
-  else if (k === 'r') setDrawer(drawer.hidden);
   else if (k === '1') setStyle('ink'); else if (k === '2') setStyle('half'); else if (k === '3') setStyle('solid');
   else if (k === '+' || k === '=') zoomBy(0.9); else if (k === '-' || k === '_') zoomBy(1.1);
   else if (mode === 'cine' && ev.key === 'ArrowRight') T = (T + 0.5) % PRESETS[preset].dur;
@@ -2389,6 +2577,11 @@ window.addEventListener('blur', () => { wb.space = false; });
 
 /* ---------- Boot. URL hash sets a starting state, e.g. #mode=cine&preset=viral&ar=9:16&clean=1 ---------- */
 const q = new URLSearchParams(location.hash.slice(1));
+// Maker tools stay out of a visitor's way: they exist only with #maker=1, or when the address already asks for a recording state
+const wantsMaker = (h) => h.get('maker') !== '0' && (h.get('maker') === '1' || ['mode', 'preset', 'ar', 'clean', 'rec', 't'].some((k) => h.get(k)));
+setMaker(wantsMaker(q));
+window.addEventListener('hashchange', () => { const h = new URLSearchParams(location.hash.slice(1)); if (h.has('maker')) setMaker(wantsMaker(h)); });
+if (['style', 'split', 'explode', 'auto', 'phase', 'az', 'nohint'].some((k) => q.get(k))) wb.peekT = null;   // a state asked for by address is left exactly as asked
 setMachine(q.get('m') === 'cart' ? 'cart' : 'orni', true, false);
 if (q.get('ar')) { aspectMode = q.get('ar'); press('[data-ar]', (b) => b.dataset.ar === aspectMode); }
 if (q.get('clean')) document.body.classList.add('clean');
@@ -2406,13 +2599,13 @@ if (reduceMotion) { wb.revealT = 1; $('autoBtn').setAttribute('aria-pressed', 'f
 if (q.get('mode') === 'cine') { if (q.get('preset') === 'viral') setPreset('viral'); setMode('cine'); } else resize();
 if (q.get('t')) { T = +q.get('t'); setPlaying(false); wb.revealT = 1; }
 if (q.get('lens')) { const [fx, fy] = q.get('lens').split(',').map(Number); lens.x = fx * page.w; lens.y = fy * page.h; lens.home = false; }
-if (q.get('nohint')) { did('split'); did('lens'); did('drive'); }
+if (q.get('nohint')) ['split', 'lens', 'drive', 'explode', 'pick'].forEach(did);
 // hand-written prompts appear once the drawing is finished, and bow out on their own
 setTimeout(() => { document.body.classList.add('hints'); if (!reduceMotion) lensEl.classList.add('nudge'); }, reduceMotion ? 300 : 2700);
 setTimeout(() => document.body.classList.remove('hints'), 24000);
 // test / recording hooks
 window.__seek = (t) => { T = t; setPlaying(false); if (mode === 'cine') renderCine(true); };
-window.__codex = { wb, lens, page, setMode, setPreset, setMachine, setStyle, setExplode, setMirror, setDrawer, select: (id) => select(mc.byId[id]), machines: MACHINES, renderer };
+window.__codex = { wb, lens, page, done, setMaker, setAuto, setMode, setPreset, setMachine, setStyle, setExplode, setMirror, setDrawer, select: (id) => select(mc.byId[id]), machines: MACHINES, renderer };
 document.fonts && document.fonts.ready.then(resize);
 $('loading').remove();
 requestAnimationFrame((n) => { last = n; frame(n); });
