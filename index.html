@@ -8,13 +8,13 @@
 <meta name="theme-color" content="#17100a">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Da Vinci's Living Codex">
-<meta property="og:description" content="Leonardo's flying machine, drawn in ink and rebuilt in timber. Crank it, pull it apart, read his mirror writing.">
+<meta property="og:description" content="Three of Leonardo's machines, drawn in ink and rebuilt in timber. Crank them, pull them apart, read his mirror writing.">
 <meta property="og:url" content="https://davinci-mechanics.vercel.app/">
-<meta property="og:image" content="https://davinci-mechanics.vercel.app/og.jpg">
+<meta property="og:image" content="https://davinci-mechanics.vercel.app/og.jpg?v=2">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:image" content="https://davinci-mechanics.vercel.app/og.jpg">
+<meta name="twitter:image" content="https://davinci-mechanics.vercel.app/og.jpg?v=2">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='10' fill='%23ecdec1'/%3E%3Cg fill='none' stroke='%233b2614' stroke-width='3.2' stroke-linecap='round'%3E%3Cpath d='M6 37C18 22 26 22 32 34C38 22 46 22 58 37'/%3E%3Cpath d='M32 34v14M14 31l-2 10M22 28v11M42 28v11M50 31l2 10'/%3E%3C/g%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -105,6 +105,33 @@
   #note p { margin: 0 0 0.3em; }
   #note .w { opacity: 0; transition: opacity 0.22s; }
   #note.on .w { opacity: 1; }
+
+  /* The last leaf: three sketches, a name and a line under each, and tally strokes in ink. The whole of a sketch can be pressed. */
+  #ballot { position: absolute; inset: 0; z-index: 3; pointer-events: none; display: none; }
+  body.ballot #ballot { display: block; }
+  #ballot .cand { position: absolute; left: 0; top: 0; pointer-events: auto; cursor: pointer; text-align: center; color: var(--ink); -webkit-tap-highlight-color: transparent; }
+  #ballot .lab { position: absolute; left: 0; right: 0; bottom: 0; display: block; opacity: 0; transition: opacity 0.9s 0.9s; }
+  #ballot.on .lab { opacity: 1; }
+  #ballot b { display: block; font-family: var(--display); font-weight: 400; letter-spacing: 0.1em; font-size: clamp(13px, calc(var(--s) * 2.05), 18px); color: var(--sanguine); }
+  #ballot i { display: block; margin: 0.15em auto 0; max-width: 21em; font-size: clamp(12.5px, calc(var(--s) * 1.9), 16.5px); line-height: 1.2; text-wrap: balance; }
+  #ballot small { display: block; margin-top: 0.2em; font-style: italic; font-size: clamp(10.5px, calc(var(--s) * 1.5), 13px); color: var(--ink-soft); }
+  #ballot .tally { display: block; margin: 0.45em auto 0; }
+  #ballot.col small, #ballot.tight small, #ballot.tight i { display: none; }
+  #ballot b::after { content: ""; display: block; height: 1px; margin: 0.1em auto 0; width: 0; background: var(--sanguine); opacity: 0.7; transition: width 0.25s; }
+  @media (hover: hover) { #ballot:not(.voted) .cand:hover b::after { width: 9em; } }
+  #ballot.voted .cand { cursor: default; }
+  #ballotNote { position: absolute; left: 0; right: 0; bottom: calc(var(--sb) + 10px); margin: 0; text-align: center; font-style: italic; font-size: clamp(13px, calc(var(--s) * 1.9), 16px); color: var(--sanguine);
+    text-shadow: 0 0 6px rgba(236, 222, 193, 0.95); opacity: 0; transition: opacity 0.9s 1.2s; }
+  #ballot.on #ballotNote { opacity: 0.92; }
+  /* nothing on this leaf turns or comes apart, so the instruments are put away; the quill stays */
+  body.ballot .crankWrap, body.ballot .rulerWrap, body.ballot #bench .plate, body.ballot #split, body.ballot #lens { visibility: hidden !important; pointer-events: none !important; }
+  body.ballot #hintLens, body.ballot #hintPick { display: none; }
+
+  /* The quill: it goes where the line is being drawn, then lies down on the desk. Its shadow is a second copy, blurred,
+     thrown down and to the right like every other shadow here. Neither can be touched. */
+  #quill, #quillSh { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 4; will-change: transform; }
+  #quillSh { opacity: 0.4; }
+  body.clean #quill, body.clean #quillSh { z-index: 4; }
 
   /* The leaf that sweeps across when you turn to another machine */
   #turn {
@@ -208,17 +235,58 @@
   #hintPick svg { left: 40px; top: -30px; }
   @media (pointer: coarse) { #hintPick { display: block; } }
 
+  /* ---------- The book's cover: shut until the page is ready, then lifted from its fore-edge toward the reader ---------- */
+  #book { position: fixed; z-index: 40; perspective: 2600px; perspective-origin: 22% 46%; }
+  #book::before {   /* the shadow the lifting board throws across the page */
+    content: ""; position: absolute; inset: 5px; background: linear-gradient(90deg, rgba(10, 5, 1, 0.78), rgba(10, 5, 1, 0.3) 55%, rgba(10, 5, 1, 0) 100%); opacity: 0;
+  }
+  #cover {
+    position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 3px 6px 6px 3px; background: #46290f;
+    transform-origin: 0 50%; box-shadow: 0 1px 0 #1a0d04, 4px 8px 14px rgba(0, 0, 0, 0.6), 12px 24px 36px rgba(0, 0, 0, 0.5);
+  }
+  #book.open { pointer-events: none; }
+  body.shut #split { visibility: hidden; }   /* its brass lip would stick out from under the board */
+  body.shut #tabs { visibility: hidden; }    /* the markers lie inside the shut book; they drop out at the head once it is open */
+  body.opening #tabs button { animation: ribbonIn 0.6s cubic-bezier(0.2, 0.75, 0.3, 1) both; }
+  body.opening #tabs button:nth-child(1) { animation-delay: 0.55s; }
+  body.opening #tabs button:nth-child(2) { animation-delay: 0.65s; }
+  body.opening #tabs button:nth-child(3) { animation-delay: 0.75s; }
+  body.opening #tabs button:nth-child(4) { animation-delay: 0.85s; }
+  /* it rises out from between the leaves: moved down by its own height and cut off at the head of the book, so only what is already out shows */
+  @keyframes ribbonIn { from { transform: translateY(100%); clip-path: polygon(0 0, 50% 0, 100% 0, 100% 0, 0 0); } }
+  @media (prefers-reduced-motion: reduce) { body.opening #tabs button { animation: none; } }
+  /* the instruments are laid on the desk once the page knows how big they should be */
+  #bench > * { transition: opacity 0.5s; }
+  body:not(.ready) #bench > * { opacity: 0; }
+  #book.open::before { animation: bookShade 1.25s ease-out both; }
+  #book.open #cover { transform: rotateY(-104deg); opacity: 0; transition: transform 1.25s cubic-bezier(0.5, 0.02, 0.36, 1), opacity 0.42s 0.72s ease-in; }
+  @keyframes bookShade { 0% { opacity: 0.9; } 100% { opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) { #book.open #cover { transform: none; transition: opacity 0.5s; } #book.open::before { animation: none; } }
+
   /* ---------- Things on the desk (outside the page) ---------- */
   .ui { z-index: 6; }
-  #tabs { position: fixed; left: 0; top: 0; display: flex; gap: 3px; align-items: flex-end; height: 34px; }
+  /* The leaves are found by silk markers laid between them: the ends lie out over the head of the book.
+     The one for the open leaf is pulled further out and catches the light. */
+  #tabs { position: fixed; left: 38px; top: 12px; display: flex; gap: 7px; align-items: flex-end; height: 34px; filter: drop-shadow(2px 3px 2px rgba(0, 0, 0, 0.5)); }
   #tabs button {
-    font-family: var(--display); font-size: 14px; letter-spacing: 0.03em; color: #4a3218; white-space: nowrap;
-    padding: 6px 13px 7px; border-radius: 7px 7px 0 0; height: 27px; box-sizing: border-box;
-    background: linear-gradient(180deg, #c3ab7e, #a98f62);
-    box-shadow: inset 0 1px 0 rgba(255, 250, 230, 0.35), inset 0 -5px 6px -4px rgba(40, 24, 8, 0.5), 0 -2px 6px rgba(0, 0, 0, 0.35);
+    --silk: #7a1d1a;
+    font-family: var(--display); font-size: 13.5px; letter-spacing: 0.05em; color: #efdcae; white-space: nowrap; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+    padding: 10px 12px 5px; height: 27px; box-sizing: border-box; border-radius: 0;
+    background:
+      repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.075) 0 1px, rgba(0, 0, 0, 0.06) 1px 2px),
+      repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.03) 0 1px, rgba(0, 0, 0, 0.05) 1px 3px),
+      linear-gradient(90deg, rgba(0, 0, 0, 0.3), rgba(255, 255, 255, 0.16) 18%, rgba(0, 0, 0, 0.08) 52%, rgba(255, 255, 255, 0.11) 82%, rgba(0, 0, 0, 0.32)),
+      linear-gradient(180deg, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.5)),
+      var(--silk);
+    clip-path: polygon(0 0, 50% 7px, 100% 0, 100% 100%, 0 100%);
+    filter: brightness(0.7) saturate(0.85); transition: height 0.25s, filter 0.25s;
   }
-  #tabs button small { opacity: 0.65; margin-right: 6px; }
-  #tabs button[aria-pressed="true"] { height: 34px; color: var(--ink); background: linear-gradient(180deg, #f1e6ca, #e7d8b6); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 -3px 8px rgba(0, 0, 0, 0.4); }
+  #tabs button:nth-child(2) { --silk: #1f4a33; }
+  #tabs button:nth-child(3) { --silk: #1d3458; }
+  #tabs button:nth-child(4) { --silk: #8a6718; }
+  #tabs button small { opacity: 0.75; margin-right: 6px; }
+  #tabs button:hover { filter: brightness(0.88); }
+  #tabs button[aria-pressed="true"] { height: 34px; filter: none; }
 
   #tools { position: fixed; right: 16px; top: 0; height: 36px; display: flex; gap: 18px; align-items: center; font-size: 14px; font-style: italic; color: rgba(233, 220, 192, 0.72); }
   #tools button { padding: 6px 0; border-bottom: 1px dotted rgba(233, 220, 192, 0.35); }
@@ -324,7 +392,7 @@
   #time { font-variant-numeric: tabular-nums; min-width: 40px; text-align: right; opacity: 0.75; }
 
   body.clean #tabs, body.clean #tools, body.clean #drawer, body.clean #transport, body.clean .hint { display: none !important; }
-  #loading { position: fixed; inset: 0; display: grid; place-items: center; font-style: italic; font-size: 19px; color: rgba(233, 220, 192, 0.6); text-align: center; padding: 0 24px; pointer-events: none; }
+  #loading { position: fixed; inset: 0; z-index: 41; display: grid; place-items: center; font-style: italic; font-size: 19px; color: rgba(233, 220, 192, 0.6); text-align: center; padding: 0 24px; pointer-events: none; }
   #exitClean {
     position: fixed; right: 10px; top: 8px; z-index: 7; display: none; font-style: italic; font-size: 14px;
     background: rgba(26, 17, 9, 0.9); color: var(--cream); border: 1px solid rgba(201, 153, 74, 0.45); border-radius: 3px;
@@ -334,7 +402,8 @@
   body.clean #exitClean.show { opacity: 0.92; }
 
   @media (max-width: 700px) {
-    #tabs button { font-size: 12px; padding: 5px 9px 6px; }
+    #tabs { gap: 5px; left: 14px; }
+    #tabs button { font-size: 12px; padding: 10px 8px 5px; }
     .lg { display: none; }
     #tools { font-size: 13px; gap: 12px; right: 10px; }
     #hintLens { display: none; }
@@ -366,8 +435,9 @@
 </script>
 </head>
 <body data-mode="wb">
-<div id="loading">unrolling the page…</div>
+<div id="loading"></div>
 <script>setTimeout(function () { var l = document.getElementById('loading'); if (l && !window.__codex) l.textContent = 'This page needs WebGL, and a connection to fetch its 3D library.'; }, 9000);</script>
+<div id="book" aria-hidden="true"><canvas id="cover"></canvas></div>
 <div id="stage" aria-label="Interactive reconstruction of Leonardo da Vinci's machines">
   <canvas id="gl"></canvas>
   <canvas id="ov"></canvas>
@@ -391,14 +461,23 @@
     <svg width="40" height="22" viewBox="0 0 40 22"><path d="M2 14 C12 20, 26 18, 37 6 M37 6 l-6 1.5 M37 6 l-1 6"/></svg></div>
   <div id="hintPick" class="hint wb-only">tap any part<br>to read about it
     <svg width="34" height="30" viewBox="0 0 34 30"><path d="M3 28 C4 16, 14 7, 30 4 M30 4 l-6 -1.5 M30 4 l-4 5"/></svg></div>
+  <div id="ballot" class="wb-only">
+    <button type="button" class="cand" data-c="crossbow" aria-label="Make your mark for the giant crossbow"><span class="lab"><b>The Giant Crossbow</b><i>a bow some twenty-four metres across, drawn by a screw and loosed with a mallet</i><small>Codex Atlanticus, f. 149r · c. 1490</small><canvas class="tally" width="2" height="2"></canvas></span></button>
+    <button type="button" class="cand" data-c="car" aria-label="Make your mark for the armoured car"><span class="lab"><b>The Armoured Car</b><i>a covered car with guns all round, moved from inside by men turning cranks</i><small>British Museum · c. 1487</small><canvas class="tally" width="2" height="2"></canvas></span></button>
+    <button type="button" class="cand" data-c="knight" aria-label="Make your mark for the mechanical knight"><span class="lab"><b>The Mechanical Knight</b><i>a suit of armour worked by cords and pulleys: it sits up and moves its arms</i><small>Codex Atlanticus · c. 1495</small><canvas class="tally" width="2" height="2"></canvas></span></button>
+    <p id="ballotNote" role="status"></p>
+  </div>
   <div class="caption" id="cap"></div>
   <div id="turn"></div>
+  <canvas id="quillSh" aria-hidden="true"></canvas>
+  <canvas id="quill" aria-hidden="true"></canvas>
 </div>
 
 <nav id="tabs" class="ui" aria-label="Machines">
   <button type="button" data-m="orni" aria-pressed="true"><small>I</small>Ornithopter</button>
   <button type="button" data-m="cart" aria-pressed="false"><small>II</small><span class="lg">Self-Propelled </span>Cart</button>
   <button type="button" data-m="screw" aria-pressed="false"><small>III</small><span class="lg">Aerial </span>Screw</button>
+  <button type="button" data-m="vote" aria-pressed="false"><small>IV</small><span class="lg">What </span>Next?</button>
 </nav>
 <div id="tools" class="ui">
   <button type="button" id="sndBtn" aria-pressed="false">Sound: off</button>
@@ -448,6 +527,166 @@
   <span id="time">0.0s</span>
 </div>
 <button id="exitClean" type="button">show controls · H</button>
+
+<script>
+// The book lies shut on the desk until the page behind its cover is ready. This small script runs before the 3D
+// library has been fetched, so the cover is the first thing anyone sees; the main script below opens it.
+(function () {
+// The cover of the book: old calf over boards, blind-tooled, with what is left of the gilding.
+// Painted once on a 2D canvas, before the 3D library has arrived: a height map (grain, creases, the tooling pressed in)
+// is lit from the candle's side, pixel by pixel. kind: 'man' (the figure pressed in), 'worn' (nearly rubbed away), 'plain' (circle and square only).
+function paintCover(cv, W, H, kind) {
+  var k = Math.min(1, 880 / Math.max(W, H)), w = Math.round(W * k), h = Math.round(H * k), TAU = Math.PI * 2;
+  var seed = 1487, rnd = function () { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  var mk = function (a, b) { var c = document.createElement('canvas'); c.width = a; c.height = b; return c; };
+  // soft noise: a small sheet of random greys, stretched
+  var noise = function (cell) {
+    var nw = Math.max(2, Math.round(w / cell)), nh = Math.max(2, Math.round(h / cell)), c = mk(nw, nh), x = c.getContext('2d'), d = x.createImageData(nw, nh);
+    for (var i = 0; i < d.data.length; i += 4) { var v = rnd() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 255; }
+    x.putImageData(d, 0, 0); return c;
+  };
+  var hc = mk(w, h), hx = hc.getContext('2d');
+  hx.fillStyle = '#808080'; hx.fillRect(0, 0, w, h);
+  hx.imageSmoothingEnabled = true; hx.imageSmoothingQuality = 'high';
+  [[1.2, 0.17], [2.6, 0.08], [8, 0.05], [40, 0.09], [150, 0.20]].forEach(function (L) { hx.globalAlpha = L[1]; hx.drawImage(noise(L[0]), 0, 0, w, h); });
+  // creases: the fine net every old hide has
+  hx.globalAlpha = 1; hx.lineCap = 'round';
+  for (var i = 0; i < 520; i++) {
+    var x0 = rnd() * w, y0 = rnd() * h, a = rnd() * TAU, l = 4 + rnd() * 16;
+    hx.strokeStyle = 'rgba(0,0,0,' + (0.03 + rnd() * 0.06) + ')'; hx.lineWidth = 0.5 + rnd() * 0.7;
+    hx.beginPath(); hx.moveTo(x0, y0); hx.quadraticCurveTo(x0 + Math.cos(a) * l * 0.5 + (rnd() - 0.5) * 5, y0 + Math.sin(a) * l * 0.5 + (rnd() - 0.5) * 5, x0 + Math.cos(a) * l, y0 + Math.sin(a) * l); hx.stroke();
+  }
+  // the tooling goes on two sheets at once: pressed into the height map, and (where it was gilded) onto the gold sheet
+  var gc = mk(w, h), gx = gc.getContext('2d');
+  gx.fillStyle = '#000'; gx.fillRect(0, 0, w, h); gx.lineCap = gx.lineJoin = 'round'; hx.lineJoin = 'round';
+  var u = Math.min(w, h) / 100;
+  var press = function (path, width, depth, gilt, fill) {
+    // a soft-shouldered groove: wide and faint first, narrow and deep last
+    [[2.6, 0.22], [1.7, 0.35], [1, 0.6]].forEach(function (s) {
+      hx.strokeStyle = hx.fillStyle = 'rgba(0,0,0,' + (depth * s[1]).toFixed(3) + ')'; hx.lineWidth = width * s[0];
+      hx.beginPath(); path(hx); if (fill) { hx.fill(); hx.lineWidth = width * (s[0] - 1) * 2 + 0.01; } hx.stroke();
+    });
+    if (gilt) { gx.strokeStyle = 'rgba(255,255,255,' + gilt + ')'; gx.lineWidth = width * 0.9; gx.beginPath(); path(gx); gx.stroke(); }
+  };
+  var rect = function (m) { return function (c) { c.rect(m, m, w - 2 * m, h - 2 * m); }; };
+  var circ = function (x, y, r) { return function (c) { c.moveTo(x + r, y); c.arc(x, y, r, 0, TAU); }; };
+  // border: a triple fillet, then an inner panel
+  press(rect(3.4 * u), 0.5 * u, 0.5, 1); press(rect(4.7 * u), 0.22 * u, 0.4, 0); press(rect(5.5 * u), 0.22 * u, 0.4, 0);
+  var pm = 10.5 * u; press(rect(pm), 0.42 * u, 0.5, 0.9); press(rect(pm + 1.1 * u), 0.2 * u, 0.4, 0);
+  // a small tool repeated along the border between the fillets
+  var step = 3.1 * u, bm = 8 * u;
+  var stamp = function (x, y) { press(function (c) { c.moveTo(x, y - 0.8 * u); c.lineTo(x + 0.8 * u, y); c.lineTo(x, y + 0.8 * u); c.lineTo(x - 0.8 * u, y); c.closePath(); }, 0.16 * u, 0.42, 0); };
+  for (var x = bm + step; x < w - bm - step * 0.5; x += (w - 2 * bm) / Math.round((w - 2 * bm) / step)) { stamp(x, bm); stamp(x, h - bm); }
+  for (var y = bm; y <= h - bm + 1; y += (h - 2 * bm) / Math.round((h - 2 * bm) / step)) { stamp(bm, y); stamp(w - bm, y); }
+  // corner pieces of the panel: a fan of three leaves
+  [[pm, pm, 1, 1], [w - pm, pm, -1, 1], [pm, h - pm, 1, -1], [w - pm, h - pm, -1, -1]].forEach(function (c) {
+    var R = 8.5 * u;
+    press(function (p) { p.moveTo(c[0] + c[2] * R, c[1] + c[3] * 1.4 * u); p.quadraticCurveTo(c[0] + c[2] * R * 0.95, c[1] + c[3] * R * 0.95, c[0] + c[2] * 1.4 * u, c[1] + c[3] * R); }, 0.3 * u, 0.5, 0.8);
+    for (var j = 0; j < 3; j++) {
+      var a = (0.2 + j * 0.3) * Math.PI / 2 + 0.07, ex = c[0] + c[2] * Math.cos(a) * R * 0.74, ey = c[1] + c[3] * Math.sin(a) * R * 0.74;
+      press(function (p) { p.moveTo(c[0] + c[2] * 1.6 * u, c[1] + c[3] * 1.6 * u); p.quadraticCurveTo(c[0] + c[2] * Math.cos(a - 0.3) * R * 0.5, c[1] + c[3] * Math.sin(a - 0.3) * R * 0.5, ex, ey);
+        p.quadraticCurveTo(c[0] + c[2] * Math.cos(a + 0.3) * R * 0.5, c[1] + c[3] * Math.sin(a + 0.3) * R * 0.5, c[0] + c[2] * 1.6 * u, c[1] + c[3] * 1.6 * u); }, 0.2 * u, 0.4, 0);
+    }
+  });
+  // the centre: a circle and a square, and the man who fits them both
+  var S = Math.min(h * 0.5, w * 0.56), cx = w / 2, gy = h / 2 + 0.604 * S, P = function (x, y) { return [cx + x * S, gy - y * S]; };
+  var tool = Math.max(1.3, S * 0.011);
+  press(circ(cx, gy - 0.604 * S, 0.604 * S), tool, 0.62, 1);
+  press(function (c) { c.rect(cx - S / 2, gy - S, S, S); }, tool, 0.62, 1);
+  press(circ(cx, gy - 0.604 * S, 0.66 * S), tool * 0.45, 0.4, 0);
+  if (w > h * 1.25) [-1, 1].forEach(function (sd) {       // a wide board has room for a rosette on either side
+    var rx = cx + sd * (w / 2 - pm + 0.66 * S) / 2, ry = h / 2, R = Math.min(7 * u, (w / 2 - pm - 0.66 * S) * 0.3);
+    press(circ(rx, ry, R), 0.3 * u, 0.5, 0.9); press(circ(rx, ry, R * 0.3), 0.22 * u, 0.45, 0);
+    for (var j = 0; j < 8; j++) { var a = j / 8 * TAU; (function (a) { press(function (c) { c.moveTo(rx + Math.cos(a) * R * 0.3, ry + Math.sin(a) * R * 0.3); c.quadraticCurveTo(rx + Math.cos(a + 0.3) * R * 0.75, ry + Math.sin(a + 0.3) * R * 0.75, rx + Math.cos(a) * R * 0.95, ry + Math.sin(a) * R * 0.95);
+      c.quadraticCurveTo(rx + Math.cos(a - 0.3) * R * 0.75, ry + Math.sin(a - 0.3) * R * 0.75, rx + Math.cos(a) * R * 0.3, ry + Math.sin(a) * R * 0.3); }, 0.18 * u, 0.4, 0); })(a); }
+  });
+  if (kind !== 'plain') {
+    var d = kind === 'worn' ? 0.16 : 0.3;
+    var limb = function (a, b, wa, wb) { return function (c) {   // a tapered limb between two points
+      var A = P(a[0], a[1]), B = P(b[0], b[1]), dx = B[0] - A[0], dy = B[1] - A[1], l = Math.hypot(dx, dy), nx = -dy / l, ny = dx / l; wa *= S / 2; wb *= S / 2;
+      c.moveTo(A[0] + nx * wa, A[1] + ny * wa); c.lineTo(B[0] + nx * wb, B[1] + ny * wb); c.arc(B[0], B[1], wb, Math.atan2(ny, nx), Math.atan2(-ny, -nx), true);
+      c.lineTo(A[0] - nx * wa, A[1] - ny * wa); c.arc(A[0], A[1], wa, Math.atan2(-ny, -nx), Math.atan2(ny, nx), true); c.closePath();
+    }; };
+    var body = function (c) {
+      var h0 = P(0, 0.936); c.moveTo(h0[0] + 0.05 * S, h0[1]); c.ellipse(h0[0], h0[1], 0.05 * S, 0.064 * S, 0, 0, TAU);          // head
+      limb([0, 0.868], [0, 0.82], 0.05, 0.062)(c);                                                                              // neck
+      var t = [[-0.125, 0.825], [0.125, 0.825], [0.118, 0.7], [0.092, 0.6], [0.102, 0.5], [0, 0.468], [-0.102, 0.5], [-0.092, 0.6], [-0.118, 0.7]].map(function (p) { return P(p[0], p[1]); });
+      c.moveTo(t[0][0], t[0][1]); t.slice(1).forEach(function (p) { c.lineTo(p[0], p[1]); }); c.closePath();                    // trunk
+      [-1, 1].forEach(function (s) {
+        limb([s * 0.115, 0.8], [s * 0.3, 0.8], 0.064, 0.05)(c); limb([s * 0.3, 0.8], [s * 0.44, 0.8], 0.05, 0.036)(c); limb([s * 0.44, 0.8], [s * 0.495, 0.8], 0.036, 0.016)(c);       // arms level
+        limb([s * 0.115, 0.8], [s * 0.285, 0.905], 0.064, 0.05)(c); limb([s * 0.285, 0.905], [s * 0.405, 0.975], 0.05, 0.036)(c); limb([s * 0.405, 0.975], [s * 0.452, 1.0], 0.036, 0.016)(c);   // arms raised to the circle
+        limb([s * 0.055, 0.5], [s * 0.048, 0.27], 0.098, 0.066)(c); limb([s * 0.048, 0.27], [s * 0.04, 0.045], 0.066, 0.04)(c); limb([s * 0.04, 0.03], [s * 0.095, 0.012], 0.03, 0.02)(c);    // legs together
+        limb([s * 0.06, 0.5], [s * 0.168, 0.3], 0.098, 0.066)(c); limb([s * 0.168, 0.3], [s * 0.262, 0.09], 0.066, 0.04)(c); limb([s * 0.262, 0.078], [s * 0.315, 0.074], 0.03, 0.02)(c);     // legs apart, feet on the circle
+      });
+    };
+    // pressed in as one shape, shallow, with a soft shoulder
+    var fc = mk(w, h), fx = fc.getContext('2d'); fx.fillStyle = '#000'; fx.beginPath(); body(fx); fx.fill('nonzero');
+    [[5, 0.10], [3, 0.14], [1.6, 0.2], [0, 0.56]].forEach(function (s) {
+      hx.globalAlpha = d * s[1];
+      if (s[0]) for (var j = 0; j < 8; j++) hx.drawImage(fc, Math.cos(j / 8 * TAU) * s[0] * tool * 0.6, Math.sin(j / 8 * TAU) * s[0] * tool * 0.6); else hx.drawImage(fc, 0, 0);
+    });
+    hx.globalAlpha = 1;
+  }
+  // light it
+  var Hd = hx.getImageData(0, 0, w, h).data, Gd = gx.getImageData(0, 0, w, h).data;
+  var wear = noise(9).getContext('2d'), wc = mk(w, h), wx = wc.getContext('2d'); wx.drawImage(noise(7), 0, 0, w, h); wx.globalAlpha = 0.5; wx.drawImage(noise(34), 0, 0, w, h);
+  var Wd = wx.getImageData(0, 0, w, h).data, out = hx.createImageData(w, h), o = out.data;
+  var lx = 0.42 * w, ly = 0.36 * h, lz = 0.55 * Math.max(w, h), diag = Math.hypot(w, h);
+  for (var y = 0; y < h; y++) for (var x = 0; x < w; x++) {
+    var i = (y * w + x) * 4, xl = x > 0 ? i - 4 : i, xr = x < w - 1 ? i + 4 : i, yu = y > 0 ? i - w * 4 : i, yd = y < h - 1 ? i + w * 4 : i;
+    var gxn = (Hd[xr] - Hd[xl]) * 0.05, gyn = (Hd[yd] - Hd[yu]) * 0.05, nl = 1 / Math.sqrt(gxn * gxn + gyn * gyn + 1), nx = -gxn * nl, ny = -gyn * nl, nz = nl;
+    var dx = lx - x, dy = ly - y, dl = 1 / Math.sqrt(dx * dx + dy * dy + lz * lz), Lx = dx * dl, Ly = dy * dl, Lz = lz * dl;
+    var dif = Math.max(0, nx * Lx + ny * Ly + nz * Lz), hz = Lz + 1, hl = 1 / Math.sqrt(Lx * Lx + Ly * Ly + hz * hz), sp = Math.max(0, nx * Lx * hl + ny * Ly * hl + nz * hz * hl);
+    var fall = 1 - 0.5 * Math.min(1, Math.max(0, (Math.sqrt(dx * dx + dy * dy) / diag - 0.12) / 0.75));
+    var hgt = Hd[i] / 255, wn = Wd[i] / 255, edge = Math.min(x, y, w - 1 - x, h - 1 - y) / u;
+    // rubbed pale along the edges and on the high spots; grime lies in the hollows
+    var rub = Math.min(1, Math.max(0, (1 - edge / 3.2)) * (0.5 + wn) + Math.max(0, hgt - 0.56) * 2.2 * wn), dirt = Math.max(0, 0.46 - hgt) * 1.5;
+    var r = 98 + 58 * rub - 52 * dirt, g = 56 + 42 * rub - 32 * dirt, b = 30 + 27 * rub - 17 * dirt, tone = 0.86 + 0.28 * (Wd[i + 1] / 255 - 0.5);
+    var lit = (0.16 + 1.06 * dif * dif) * fall * tone, s1 = Math.pow(sp, 30) * 0.2 * fall;
+    r = r * lit + 255 * s1; g = g * lit + 214 * s1; b = b * lit + 160 * s1;
+    var gold = Gd[i] / 255 * Math.min(1, Math.max(0, (wn - 0.52) * 5 + (0.5 - hgt) * 1.2));
+    if (gold > 0.01) { var s2 = Math.pow(sp, 9) * 1.0 * fall, gl = (0.3 + 0.75 * dif) * fall; r += (205 * gl + 255 * s2 - r) * gold; g += (158 * gl + 226 * s2 - g) * gold; b += (70 * gl + 150 * s2 - b) * gold; }
+    o[i] = r; o[i + 1] = g; o[i + 2] = b; o[i + 3] = 255;
+  }
+  hx.putImageData(out, 0, 0);
+  cv.width = Math.round(W); cv.height = Math.round(H);
+  var c = cv.getContext('2d'); c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high'; c.drawImage(hc, 0, 0, cv.width, cv.height);
+  // the board's own edge: light catches the top and the left, the right and the foot fall away
+  var e = c.createLinearGradient(0, 0, 0, cv.height); e.addColorStop(0, 'rgba(255,225,180,0.22)'); e.addColorStop(0.012, 'rgba(255,225,180,0)'); e.addColorStop(0.985, 'rgba(0,0,0,0)'); e.addColorStop(1, 'rgba(0,0,0,0.5)');
+  c.fillStyle = e; c.fillRect(0, 0, cv.width, cv.height);
+  e = c.createLinearGradient(0, 0, cv.width, 0); e.addColorStop(0, 'rgba(0,0,0,0.5)'); e.addColorStop(0.006, 'rgba(255,225,180,0.16)'); e.addColorStop(0.02, 'rgba(0,0,0,0.28)'); e.addColorStop(0.034, 'rgba(0,0,0,0)'); e.addColorStop(0.99, 'rgba(0,0,0,0)'); e.addColorStop(1, 'rgba(0,0,0,0.45)');
+  c.fillStyle = e; c.fillRect(0, 0, cv.width, cv.height);
+}
+
+  var q = new URLSearchParams(location.hash.slice(1)), book = document.getElementById('book'), cv = document.getElementById('cover');
+  // links that ask for a recording state, or for no cover, go straight to the page
+  if (q.get('cover') === '0' || ['mode', 'preset', 'ar', 'clean', 'rec', 't'].some(function (k) { return q.get(k); })) { book.parentNode.removeChild(book); return; }
+  var kind = { worn: 'worn', plain: 'plain' }[q.get('cover')] || 'man', size = '';
+  // the board lies exactly over the sheet (same margins as the main script's resize), overhanging it a little as boards do
+  // Until the main script is running, the sheet's place is worked out here from the same margins it will use; after
+  // that it hands over the sheet's real rectangle each time the window changes.
+  function place(r) {
+    var W = window.innerWidth, sx = W < 700 ? 6 : 16, st = 43, o = 5;
+    if (!r || r.type) r = { x: sx, y: st, w: W - 2 * sx, h: document.getElementById('bench').getBoundingClientRect().top - st };
+    var w = Math.round(r.w + 2 * o), h = Math.round(Math.max(120, r.h + 2 * o)), key = w + 'x' + h;
+    book.style.cssText = 'left:' + (r.x - o) + 'px;top:' + (r.y - o) + 'px;width:' + w + 'px;height:' + h + 'px';
+    if (size !== key) { size = key; setTimeout(function () { if (size === key && book.parentNode) paintCover(cv, w, h, kind); }, 0); }
+  }
+  place();
+  window.addEventListener('resize', place);
+  document.body.classList.add('shut');
+  window.__book = {
+    t0: performance.now(), place: place,
+    open: function () {
+      window.removeEventListener('resize', place);
+      window.__book = null;
+      book.className = 'open'; document.body.classList.remove('shut'); document.body.classList.add('opening');
+      setTimeout(function () { document.body.classList.remove('opening'); }, 1700);
+      setTimeout(function () { if (book.parentNode) book.parentNode.removeChild(book); }, 1700);
+    },
+  };
+})();
+</script>
 
 <script type="module">
 import * as THREE from 'three';
@@ -1527,6 +1766,57 @@ function mergeByMaterial(meshes) {
   groups.forEach((gs, mat) => { out.push(new THREE.Mesh(mergeGeometries(gs, false), mat)); gs.forEach((g) => g.dispose()); });
   return out;
 }
+// A pen draws one line after another, and goes on from where the last one ended. The edges of a part come out of the
+// geometry in no order at all, so put them in the order a hand would take: follow on from the point just reached, by
+// the straightest way; when nothing joins there, lift and go to the nearest edge not yet drawn.
+function chainStrokes(segs) {
+  const n = segs.length;
+  if (n < 3) return;
+  const key = (v) => Math.round(v.x * 400) + ',' + Math.round(v.y * 400) + ',' + Math.round(v.z * 400);
+  const keys = segs.map((s) => [key(s[0]), key(s[1])]), at = new Map();
+  keys.forEach((k, i) => { for (let e = 0; e < 2; e++) { const l = at.get(k[e]); if (l) l.push(i); else at.set(k[e], [i]); } });
+  const used = new Uint8Array(n), out = [], dir = new THREE.Vector3(), d2 = new THREE.Vector3();
+  let cur = 0, flip = false;
+  for (let done = 0; ; ) {
+    used[cur] = 1; done++;
+    const a = segs[cur][flip ? 1 : 0], b = segs[cur][flip ? 0 : 1], kb = keys[cur][flip ? 0 : 1];
+    out.push([a, b]);
+    if (done === n) break;
+    dir.subVectors(b, a).normalize();
+    let next = -1, best = -2;
+    for (const j of at.get(kb)) {
+      if (used[j]) continue;
+      const f = keys[j][0] !== kb;   // joins by its far end: draw it the other way round
+      const c = d2.subVectors(segs[j][f ? 0 : 1], segs[j][f ? 1 : 0]).normalize().dot(dir);
+      if (c > best) { best = c; next = j; flip = f; }
+    }
+    if (next < 0) {
+      best = Infinity;
+      for (let j = 0; j < n; j++) {
+        if (used[j]) continue;
+        const d0 = segs[j][0].distanceToSquared(b), d1 = segs[j][1].distanceToSquared(b);
+        if (d0 < best) { best = d0; next = j; flip = false; }
+        if (d1 < best) { best = d1; next = j; flip = true; }
+      }
+    }
+    cur = next;
+  }
+  for (let i = 0; i < n; i++) segs[i] = out[i];
+}
+// Many parts are being drawn at once and there is one pen. It stays with one part for a moment, then goes to the part
+// begun most recently. Worked out once per machine as a list of [from, to, part] in drawing time, so it scrubs.
+function penPlan(parts) {
+  const plan = [], END = Math.max(...parts.map((p) => p.end)), DWELL = 1.0;
+  let t = Math.min(...parts.map((p) => p.start));
+  while (t < END - 0.02) {
+    let best = null;
+    parts.forEach((p) => { if (p.start <= t + 1e-6 && p.end > t + 0.3 && (!best || (p.pen.total > 1.2) * 10 + p.start > (best.pen.total > 1.2) * 10 + best.start)) best = p; });
+    if (!best) { const later = parts.filter((p) => p.start > t).map((p) => p.start); if (!later.length) break; t = Math.min(...later); continue; }
+    const t1 = Math.min(best.end, t + DWELL);
+    plan.push({ t0: t, t1, p: best }); t = t1;
+  }
+  return plan;
+}
 function buildMachine(spec) {
   const root = new THREE.Group(); root.visible = false; scene.add(root);
   const rand = rng(spec.seed), parts = [];
@@ -1550,6 +1840,7 @@ function buildMachine(spec) {
       eg.dispose();
     });
     B.polylines.forEach((pl) => { for (let i = 0; i < pl.length - 1; i++) segs.push([pl[i].clone(), pl[i + 1].clone()]); });
+    chainStrokes(segs);
     // Draftsman's overshoot on long straight strokes
     segs.forEach((s) => {
       const len = s[0].distanceTo(s[1]);
@@ -1587,7 +1878,7 @@ function buildMachine(spec) {
 
     const tiltAxis = new THREE.Vector3(rand() - 0.5, rand() - 0.5, rand() - 0.5).normalize();
     const p = {
-      ...d, group, surf, lineMat, dimU, glowU, start, end: start + dur,
+      ...d, group, surf, lineMat, dimU, glowU, start, end: start + dur, pen: { pos, dist, total },
       base: V3(d.pivot), off: V3(d.explode),
       delay: Math.min(0.4, (Math.abs(d.explode[1]) + Math.abs(d.explode[2]) * 0.6) * 0.09),
       tiltAxis, tiltAmt: d.tilt === 0 || d.link ? 0 : 0.12 + rand() * 0.16,
@@ -1597,7 +1888,7 @@ function buildMachine(spec) {
     surf.children.forEach((m) => { m.userData.part = p; });
     parts.push(p);
   });
-  const mc = { ...spec, root, parts, byId: Object.fromEntries(parts.map((p) => [p.id, p])),
+  const mc = { ...spec, root, parts, byId: Object.fromEntries(parts.map((p) => [p.id, p])), penPlan: penPlan(parts),
     MAXT: Math.max(...parts.map((p) => p.end)) + 0.01,
     fitA: { c: new THREE.Vector3(), r: 1, raw: 1 }, fitE: { c: new THREE.Vector3(), r: 1, raw: 1 } };
   root.visible = true;
@@ -1627,6 +1918,136 @@ function measure(mc, e, out, tall) {
   const s = box.getBoundingSphere(new THREE.Sphere());
   out.c.copy(s.center); out.raw = s.radius; out.r = s.radius * mc.fitK[tall ? 2 : e > 0.5 ? 1 : 0]; out.hy = (box.max.y - box.min.y) / 2;
 }
+/* ---------- The last leaf: three machines he drew that are not in this book yet ---------- */
+// Each is only begun: a few timbers set down, the rest left as bare ink lines. Visitors mark the one they want next.
+// "Front" of each is +x; the sheet is looked at from az 0.95, so +x runs to the right and a little toward the eye.
+const BALLOT_AZ = 0.95, BALLOT_EL = 0.34;
+const BAL = [   // cy: height of its middle; top/bot: how far it reaches above and below that on the sheet; row: how far right on a wide sheet
+  { id: 'crossbow', cy: 0.42, top: 0.95, bot: 0.75, row: -4.15 },
+  { id: 'car', cy: 0.85, top: 1.1, bot: 1.25, row: 0 },
+  { id: 'knight', cy: 1.43, top: 1.5, bot: 1.5, row: 4.15 },
+];
+function ballotDefs() {
+  const D = [], part = (id, cluster, build) => D.push({ id, sys: BAL[cluster].id, cluster, pivot: [0, BAL[cluster].cy, 0], explode: [0, 0, 0], tilt: 0,
+    it: '', itSub: '', en: '', enSub: '', anchor: [0, 0, 0], build });
+  const dirOf = (a) => [Math.cos(a), 0, Math.sin(a)];
+
+  // --- the giant crossbow: a stock on wheels, a bow as wide as a street ---
+  const bowX = (z) => 1.38 - 0.82 * (z / 1.9) ** 2, bowPts = (dx, y) => [-1.9, -1.5, -1.0, -0.5, 0, 0.5, 1.0, 1.5, 1.9].map((z) => [bowX(z) + dx, y, z]);
+  part('xStock', 0, (B) => {
+    B.beam([-1.7, 0.52, 0], [1.5, 0.52, 0], 0.2, 0.16, M.wood);
+    B.line([[-1.5, 0.605, 0.03], [1.3, 0.605, 0.03]]); B.line([[-1.5, 0.605, -0.03], [1.3, 0.605, -0.03]]);   // the groove the bolt lies in
+    B.cyl([-2.1, 0.52, 0], [-1.7, 0.52, 0], 0.045, 8, M.iron);                                            // the screw that draws the string
+    B.line([[-2.1, 0.52, 0], [-2.1, 0.74, 0.1], [-2.22, 0.76, 0.12]]);
+    B.box([-0.42, 0.63, 0], [0.16, 0.07, 0.24], M.dark);                                                  // the nut that holds it
+  });
+  part('xBow', 0, (B) => {
+    B.tube(bowPts(0, 0.63), 0.065, M.pale, 30);
+    B.line(bowPts(-0.085, 0.63)); B.line(bowPts(0.085, 0.63));                                            // it is built up of leaves
+    [-1.25, -0.6, 0.6, 1.25].forEach((z) => B.circle([bowX(z), 0.63, z], 'z', 0.085, 14));                // lashings, not yet drawn in
+    B.line([[bowX(1.9), 0.63, 1.9], [-0.42, 0.67, 0.1], [-0.42, 0.67, -0.1], [bowX(-1.9), 0.63, -1.9]]);   // the string, drawn back
+  });
+  part('xWheels', 0, (B) => {
+    [-1.15, 0.0, 1.05].forEach((x, i) => {
+      B.cyl([x, 0.44, -0.62], [x, 0.44, 0.62], 0.04, 8, M.dark);
+      if (i !== 1) { B.ring([x, 0.44, 0.6], 'z', 0.44, 0.37, 0.07, M.wood, 28); for (let k = 0; k < 4; k++) { const a = k * Math.PI / 4 + 0.2; B.line([[x - Math.cos(a) * 0.37, 0.44 - Math.sin(a) * 0.37, 0.6], [x + Math.cos(a) * 0.37, 0.44 + Math.sin(a) * 0.37, 0.6]]); } }
+      else B.circle([x, 0.44, 0.6], 'z', 0.44, 30);                                                       // the middle pair: one circle each, no more
+      B.circle([x, 0.44, -0.6], 'z', 0.44, 30);
+    });
+  });
+
+  // --- the armoured car: a round shell of planks, guns all round, a look-out on top ---
+  part('cShell', 1, (B) => {
+    B.taper([0, 0.12, 0], [0, 0.5, 0], 1.55, 1.3, 30, M.wood);
+    B.taper([0, 0.5, 0], [0, 1.22, 0], 1.3, 0.42, 30, M.pale);
+    for (let i = 0; i < 15; i++) { const d = dirOf(i / 15 * TAU + 0.1); B.line([[d[0] * 1.3, 0.505, d[2] * 1.3], [d[0] * 0.42, 1.225, d[2] * 0.42]]); }   // plank seams
+  });
+  part('cTurret', 1, (B) => {
+    B.taper([0, 1.22, 0], [0, 1.52, 0], 0.4, 0.36, 12, M.wood);
+    B.taper([0, 1.52, 0], [0, 1.9, 0], 0.45, 0.03, 12, M.pale);
+    for (let i = 0; i < 6; i++) { const d = dirOf(i / 6 * TAU + 0.5); B.line([[d[0] * 0.385, 1.3, d[2] * 0.385], [d[0] * 0.375, 1.44, d[2] * 0.375]]); }   // sight slits
+    for (let i = 0; i < 8; i++) { const d = dirOf(i / 8 * TAU + 0.3); B.line([[d[0] * 0.45, 1.52, d[2] * 0.45], [d[0] * 0.03, 1.9, d[2] * 0.03]]); }         // the cap's ribs
+  });
+  part('cGuns', 1, (B) => {
+    for (let i = 0; i < 14; i++) {
+      const d = dirOf(i / 14 * TAU + 0.2), a = [d[0] * 1.36, 0.33, d[2] * 1.36], b = [d[0] * 1.86, 0.33, d[2] * 1.86];
+      if (i % 14 < 9) B.taper(a, b, 0.06, 0.045, 8, M.iron); else B.line([a, b]);                           // the last few are one stroke each
+    }
+  });
+
+  // --- the mechanical knight: armour that sits up and moves its arms by cords and pulleys ---
+  const K = 1.32, kp = (x, y, z) => [x * K, y * K, z * K];
+  part('kBody', 2, (B) => {
+    B.taper(kp(0, 0.93, 0), kp(0, 1.13, 0), 0.3 * K, 0.2 * K, 12, M.iron);                                  // the skirt of plates
+    B.taper(kp(0, 1.13, 0), kp(0, 1.6, 0), 0.2 * K, 0.34 * K, 12, M.pale);                                  // breastplate, fluted
+    B.taper(kp(0, 1.6, 0), kp(0, 1.72, 0), 0.22 * K, 0.11 * K, 12, M.iron);
+    B.taper(kp(0, 1.72, 0), kp(0, 1.98, 0), 0.15 * K, 0.18 * K, 12, M.pale);                                // the helm
+    B.taper(kp(0, 1.98, 0), kp(0, 2.14, 0), 0.18 * K, 0.03 * K, 12, M.pale);
+    B.line([0.4, 0.8, 1.2, 1.6, 2.0, 2.4, 2.8].map((a) => kp(Math.cos(a - 1.6) * 0.175, 1.875, Math.sin(a - 1.6) * 0.175)));   // its sight
+    for (let i = 0; i < 6; i++) { const a = i / 6 * TAU + 0.4; B.line([kp(Math.cos(a) * 0.18, 1.98, Math.sin(a) * 0.18), kp(Math.cos(a) * 0.03, 2.14, Math.sin(a) * 0.03)]); }
+    B.line([kp(0, 2.14, 0), kp(-0.05, 2.3, 0.02), kp(-0.2, 2.36, 0.05), kp(-0.34, 2.28, 0.07)]); B.line([kp(0, 2.14, 0), kp(-0.1, 2.26, -0.03), kp(-0.27, 2.25, -0.04)]);   // a plume, two strokes
+  });
+  part('kArm', 2, (B) => {
+    B.taper(kp(0, 1.58, 0.28), kp(0, 1.5, 0.52), 0.15 * K, 0.1 * K, 10, M.iron);                            // shoulder plate
+    B.cyl(kp(0, 1.5, 0.45), kp(0.16, 1.16, 0.5), 0.075 * K, 8, M.pale);
+    B.ring(kp(0.16, 1.16, 0.5), 'z', 0.1 * K, 0.03 * K, 0.13 * K, M.iron, 16);                              // the elbow turns on a pulley
+    B.cyl(kp(0.16, 1.16, 0.5), kp(0.5, 1.46, 0.5), 0.062 * K, 8, M.pale);
+    B.taper(kp(0.5, 1.46, 0.5), kp(0.61, 1.57, 0.5), 0.078 * K, 0.05 * K, 8, M.iron);
+  });
+  part('kLeg', 2, (B) => {
+    B.cyl(kp(0, 0.95, 0.15), kp(0.06, 0.52, 0.17), 0.1 * K, 8, M.pale);
+    B.ring(kp(0.06, 0.52, 0.17), 'z', 0.1 * K, 0.035 * K, 0.14 * K, M.iron, 16);
+    B.cyl(kp(0.06, 0.52, 0.17), kp(0, 0.1, 0.17), 0.075 * K, 8, M.pale);
+    B.beam(kp(-0.08, 0.045, 0.17), kp(0.27, 0.045, 0.17), 0.12 * K, 0.09 * K, M.iron);
+  });
+  part('kCords', 2, (B) => {
+    // the far arm and leg: two strokes each, where the plates will go
+    B.line([kp(0, 1.54, -0.42), kp(-0.05, 1.16, -0.5), kp(0.1, 0.86, -0.48)]); B.line([kp(0, 1.48, -0.34), kp(0.03, 1.16, -0.4), kp(0.16, 0.9, -0.4)]);
+    B.line([kp(0, 0.95, -0.2), kp(-0.04, 0.5, -0.2), kp(0, 0.06, -0.2), kp(0.26, 0.06, -0.2)]); B.line([kp(0, 0.95, -0.08), kp(0.07, 0.5, -0.1), kp(0.08, 0.1, -0.1)]);
+    // what moves him: a drum behind, a cord up the back, over a pulley in the chest and out to the elbow
+    B.disk(kp(-0.62, 0.24, 0), 'z', 0.2 * K, 0.16 * K, 16, M.wood);
+    B.line([kp(-0.62, 0.24, 0.08), kp(-0.62, 0.24, 0.24), kp(-0.74, 0.34, 0.24)]);
+    B.circle(kp(0.355, 1.42, 0.08), 'x', 0.085 * K, 18); B.circle(kp(0.35, 1.27, -0.1), 'x', 0.06 * K, 14);
+    B.line([kp(-0.62, 0.44, 0), kp(-0.3, 1.2, 0), kp(-0.33, 1.5, 0.05)]);
+    B.line([kp(0.36, 1.5, 0.1), kp(0.3, 1.5, 0.3), kp(0.16, 1.27, 0.5)]);
+  });
+  return D;
+}
+// How the three are set out on this sheet — side by side on a wide one, one above the other on a tall one — and how far
+// back the eye has to be. Worked out in pixels, because the writing under each sketch does not shrink with the sheet.
+const balR = new THREE.Vector3(), balU = new THREE.Vector3();
+const balPx = { w: 1240, h: 800, free: 640, title: 110, lab: 96, foot: 34 };   // set on resize; lab is measured once the writing is laid out
+function ballotView() {
+  const L = balPx, row = camera.aspect >= 1.25, vt = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2), ys = [0, 0, 0];
+  let ppu, spread = 1;
+  if (row) {
+    const tall = Math.max(...BAL.map((b) => b.top + b.bot)) + 0.15;
+    ppu = Math.max(14, Math.min((L.free - L.lab - L.foot - 26) / tall, L.w / 12.5));
+    const ground = -(tall * ppu + L.lab + L.foot) / 2 + tall * ppu - 0.15 * ppu;     // px below the middle of the free sheet
+    BAL.forEach((b, i) => { ys[i] = -ground / ppu + b.bot; });
+    spread = clamp(L.w / 2 / ppu / 6.25, 1, 1.3);
+  } else {
+    const units = BAL.reduce((a, b) => a + b.top + b.bot + 0.15, 0), fixed = L.title + L.foot + 3 * L.lab + 2 * 12;
+    ppu = Math.max(14, Math.min((L.free - fixed) / units, L.w / 4.1));
+    let y = -L.free / 2 + L.title + Math.max(0, (L.free - fixed - units * ppu) / 2);
+    BAL.forEach((b, i) => { ys[i] = -(y + b.top * ppu) / ppu; y += (b.top + b.bot + 0.15) * ppu + L.lab + 12; });
+  }
+  return { row, ppu, ys, spread, dist: L.h / (2 * vt * ppu) };
+}
+function ballotAt(i, out, v = ballotView()) {
+  balR.set(Math.sin(BALLOT_AZ), 0, -Math.cos(BALLOT_AZ));
+  balU.set(-Math.sin(BALLOT_EL) * Math.cos(BALLOT_AZ), Math.cos(BALLOT_EL), -Math.sin(BALLOT_EL) * Math.sin(BALLOT_AZ));
+  return out.set(0, 0, 0).addScaledVector(balR, v.row ? BAL[i].row * v.spread : 0).addScaledVector(balU, v.ys[i]);
+}
+function ballotKin(mc) {
+  const v = ballotView();
+  for (let i = 0; i < 3; i++) {
+    ballotAt(i, tQv, v); tQv.y -= BAL[i].cy;
+    mc.parts.forEach((p) => { if (p.cluster === i) p.kPos.add(tQv); });
+  }
+}
+const tQv = new THREE.Vector3();
+
 /* ---------- Content: titles, mirror-script notes, inspection notes ---------- */
 const MACHINES = {
   orni: buildMachine({
@@ -1710,6 +2131,16 @@ const MACHINES = {
     },
   }),
 };
+MACHINES.vote = buildMachine({
+  id: 'vote', ballot: true, seed: 41, defs: ballotDefs(), kin: ballotKin, fitK: [1, 1], storyK: 6, az0: BALLOT_AZ,
+  folio: '', paperSeed: 13.7, groundY: 0, groundDrop: 0, shadowBlur: 0.05, shadowK: 0,
+  verso: ['farò carri coperti, sicuri e inoffensibili', 'i quali entrando intra li inimici', 'con sue artiglierie, non è sì grande', 'moltitudine di gente d arme che non rompessino',
+    'dimmi se mai fu fatta alcuna cosa', 'dimmi se mai fu fatta', 'dimmi se mai', 'dimmi'],
+  name: 'What shall he build next?', sub: 'Three machines Leonardo drew that are not in this book yet',
+  mirrorIt: 'dimmi se mai fu fatta alcuna cosa', mirrorEn: 'tell me if anything was ever done',
+  notesIt: [], notesEn: [], story: [], sys: {},
+});
+MACHINES.vote.fitA.c.set(0, 0, 0); MACHINES.vote.fitE.c.set(0, 0, 0);
 const allParts = Object.values(MACHINES).flatMap((m) => m.parts);
 let mc = MACHINES.orni;
 /* ---------- Procedural audio: no files, everything synthesised from noise and oscillators ---------- */
@@ -1775,6 +2206,8 @@ const Snd = (() => {
   };
   const ok = (k, gap) => api.on && ctx && gate(k, gap);
   // quill scratching on rough paper
+  // one long stroke of the pen, for a tally mark
+  api.stroke = () => { if (!ok('stroke', 0.2)) return; burst(pink, 'bandpass', [[3400, 0], [2100, 0.3]], 1.3, 0.34, 0.3, 0.03); };
   api.quill = () => { if (!ok('quill', 0.05)) return; const f = R(2200, 5200); burst(pink, 'bandpass', [[f, 0], [f * R(0.7, 1.35), 0.12]], 1.4, R(0.05, 0.16), R(0.10, 0.22), 0.012); };
   // wooden thud when a part seats; lighter clack when it pops free
   api.thud = (k = 1) => { if (!ok('thud', 0.035)) return; burst(white, 'lowpass', R(190, 420), 7, 0.14, 0.5 * k); tone('sine', R(150, 190), 62, 0.11, 0.35 * k); };
@@ -1898,6 +2331,7 @@ const wb = {
   lift: 0, yaw: 0,   // the screw, driven well past its working speed: how far it has risen, how far the deck has crept round
 };
 const done = {};       // things the visitor has already tried, so their prompts stay away
+let bookShut = !!window.__book;   // the cover is still down: nothing is drawn under it yet
 let maker = false;     // maker tools (recording drawer, speed plaque, style plate) — only with #maker=1
 const lens = { x: 0, y: 0, home: true, drag: false };
 const hover = { part: null, x: 0, y: 0, a: 0 };
@@ -1915,6 +2349,7 @@ const fitX = (m) => (page.portrait && m.fitT) || m.fitE;   // how big the machin
 // Camera distance for a machine pulled apart by eG. An upright machine (the screw) must also stand between the head and the foot of the sheet,
 // however squat the sheet is: the round fit alone would let its top and its deck run off a phone held sideways.
 function distFor(m, eG, el, spill) {
+  if (m.ballot) return ballotView().dist;
   const fe = fitX(m), d = baseDist(lerp(m.fitA.r, fe.r, eG), spill);
   if (!m.upright) return d;
   const free = page.full ? (page.h - page.st - page.sb - page.bh) / page.h : 1, hy = lerp(m.fitA.hy, fe.hy, eG);
@@ -2056,7 +2491,7 @@ function paintThread(S, w, h, lw, k) {
   }
 }
 function paintAir(S, w, h, lw) {
-  if (mc.id === 'cart' || S.reveal <= mc.MAXT) return;
+  if (mc.id === 'cart' || mc.ballot || S.reveal <= mc.MAXT) return;
   const k = (S.flow || 0) * (1 - clamp(S.e * 5)) * (1 - 0.85 * S.dim);
   if (k < 0.02) return;
   if (mc.id === 'screw') { paintThread(S, w, h, lw, k); return; }
@@ -2127,7 +2562,7 @@ function paint(S, mOf) {
   }
 
   // name of the part under the pointer
-  if (mode === 'wb' && hover.part && hover.a > 0.03) {
+  if (mode === 'wb' && hover.part && hover.a > 0.03 && mc.sys[hover.part.sys]) {
     octx.save(); octx.globalAlpha = clamp(hover.a * 1.3);
     octx.font = `${1.55 * s}px ${FONT_D}`; octx.textAlign = 'left'; octx.lineJoin = 'round';
     const txt = mc.sys[hover.part.sys][0], hx = hover.x * dpr + 1.8 * s, hy = hover.y * dpr + 3.2 * s;
@@ -2230,6 +2665,7 @@ function resize() {
     page.sx = page.st = page.sb = 0;
   }
   page.w = w; page.h = h; page.l = l; page.t = t; page.bh = full && mode !== 'wb' ? bh : 0; page.type = h > w * 1.2 ? 1.32 : 1;
+  Object.assign(balPx, { w: w - 2 * page.sx, h, free: h - page.st - page.sb - page.bh });
   Object.assign(stage.style, { left: l + 'px', top: t + 'px', width: w + 'px', height: h + 'px' });
   const ps = stage.style;
   ps.setProperty('--s', (Math.min(w, h) / 100 * page.type) + 'px'); ps.setProperty('--sx', page.sx + 'px'); ps.setProperty('--st', page.st + 'px'); ps.setProperty('--sb', page.sb + 'px');
@@ -2245,15 +2681,18 @@ function resize() {
   ov.width = Math.round(w * dpr); ov.height = Math.round(h * dpr);
   camera.aspect = w / h;
   // the machine sits in the middle of the free sheet; on a tall sheet a little above it, leaving the foot for the notes and the mirror
-  page.cy = page.portrait ? 0.43 : 0.5;
+  page.cy = page.portrait && !mc.ballot ? 0.43 : 0.5;
   if (full) camera.setViewOffset(w, h, 0, Math.round(h / 2 - (page.st + page.cy * (h - page.st - page.sb - page.bh))), w, h); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
   bakePaper();
   if (!full) bakeDesk(W, H);
 
   const sr = stage.getBoundingClientRect(), tr = $('tMirror').getBoundingClientRect();
+  balPx.title = $('tSub').getBoundingClientRect().bottom - sr.top - page.st + 8;
   titleBox.x = tr.left - sr.left; titleBox.y = tr.top - sr.top + tr.height * 0.78;
   if (lens.home) homeLens();
+  paintQuill(); quillSlot();
+  if (window.__book) window.__book.place(full ? { x: l + page.sx, y: t + page.st, w: w - 2 * page.sx, h: h - page.st - page.sb } : null);
   document.querySelectorAll('.lit').forEach((el) => {
     const r = el.getBoundingClientRect();
     if (r.width) el.style.setProperty('--lit', litAt(r.left + r.width / 2 - l, r.top + r.height / 2 - t).toFixed(3));
@@ -2305,6 +2744,8 @@ function render(S, quiet) {
   renderer.render(scene, camera);
   if (mode === 'wb') placeNote();
   drawOverlay(S, m);
+  if (mc.ballot) placeBallot(S);
+  stepQuill(S);
 
   // sound, synced to what just happened on screen
   if (!quiet && Snd.on && prev.mc === mc) {
@@ -2325,7 +2766,7 @@ function render(S, quiet) {
       } else if (mc.id === 'screw') {
         if (cross((x) => x / TAU)) Snd.whoosh(clamp(Math.abs(dph) * 60 / OMEGA0, 0.3, 1.2) * 0.7);          // the low edge of the cloth comes round
         if (cross((x) => x / Math.PI + 0.5)) Snd.creak();
-      } else {
+      } else if (mc.id === 'cart') {
         if (cross((x) => x / Math.PI + 0.5)) Snd.tick(Math.floor(S.phase / Math.PI + 0.5) & 1);              // the escapement lets one tooth go
         if (cross((x) => (x * CART_K * 1.05) / (TAU / 20))) Snd.tooth();                                    // one crown-gear peg passes
       }
@@ -2378,7 +2819,7 @@ function stepWorkbench(dt, now) {
   }
   const d = wb.splitGoal - wb.split;
   wb.split += Math.sign(d) * Math.min(Math.abs(d), dt * (wb.dragSplit ? 5 : 1.5));
-  if (wb.revealT < 1) wb.revealT = Math.min(1, wb.revealT + dt / (reduceMotion ? 0.01 : 2.2));
+  if (wb.revealT < 1 && !bookShut) wb.revealT = Math.min(1, wb.revealT + dt / (reduceMotion ? 0.01 : 2.2));
   wb.dim += ((wb.sel ? 1 : 0) - wb.dim) * (1 - Math.exp(-dt * 7));
   if (!wb.sel && wb.dim < 0.01) { wb.dim = 0; wb.focus = null; noteGeo.on = false; }
 
@@ -2387,6 +2828,7 @@ function stepWorkbench(dt, now) {
   if (!dragging) { wb.az += wb.azV * dt; wb.el = clamp(wb.el + wb.elV * dt, -0.2, 1.3); const f = Math.exp(-dt * 3.2); wb.azV *= f; wb.elV *= f; }
   if (wb.azTo !== null) { wb.az += (wb.azTo - wb.az) * (1 - Math.exp(-dt * 3.2)); if (Math.abs(wb.azTo - wb.az) < 0.003) wb.azTo = null; }
   else if (!reduceMotion && !wb.sel && !dragging && now - wb.lastTouch > 6000) wb.az += 0.085 * dt;
+  if (mc.ballot) { wb.az = mc.az0; wb.el = BALLOT_EL; wb.azV = wb.elV = 0; wb.azTo = null; wb.zoom = 1; }   // a flat sheet of sketches: it is not turned
   const tgtGoal = tmp2.copy(mc.fitA.c).lerp(fitX(mc).c, eG);
   let distGoal = distFor(mc, eG, wb.el, lerp(mc.spill || 1.13, 1.0, eG)) * wb.zoom;
   if (wb.sel && wb.selPart) {
@@ -2460,7 +2902,7 @@ function placeNote() {
     sx: left + (slot ? slot.offsetLeft : 0), sy: top + (slot ? slot.offsetTop : 0), sh: slot ? slot.offsetHeight : 20 });
 }
 function select(p) {
-  if (!p) { wb.sel = null; noteEl.classList.remove('on'); return; }
+  if (!p || !mc.sys[p.sys]) { wb.sel = null; noteEl.classList.remove('on'); return; }
   const info = mc.sys[p.sys];
   wb.sel = p.sys; wb.selPart = p; wb.focus = [p.sys]; did('pick');
   noteGeo.it = info[1]; noteGeo.en = info[0].toLowerCase();
@@ -2472,6 +2914,14 @@ function select(p) {
   void noteEl.offsetWidth;
   noteEl.classList.add('on');
   for (let i = 0; i < 8; i++) setTimeout(Snd.quill, 120 + i * 130);
+  // and the quill does move: it comes over and goes along the words as they appear
+  const t0 = performance.now(), ws = noteEl.querySelectorAll('.w');
+  quill.job = (now) => {
+    const i = Math.floor(((now - t0) / 1000 - 0.1) / 0.032);
+    if (!wb.sel || noteEl.querySelector('.w') !== ws[0] || i > ws.length + 5 || reduceMotion) return null;
+    const r = ws[clamp(i, 0, ws.length - 1)].getBoundingClientRect(), sr = stage.getBoundingClientRect();
+    return { x: r.right - sr.left, y: r.top - sr.top + r.height * 0.78, key: 'note' };
+  };
   // swing round until the part is seen three-quarter on, from whichever side is nearer
   const c = mc.fitA.c, dx = p.base.x + p.anchorV.x - c.x, dz = p.base.z + p.anchorV.z - c.z;
   if (Math.hypot(dx, dz) > 0.3) {
@@ -2483,28 +2933,276 @@ function select(p) {
   wb.el += (0.42 - wb.el) * 0.5;
 }
 
+/* ---------- The quill ---------- */
+// One goose quill, painted once: bare barrel cut to a nib and stained with ink, the vane left on the upper two thirds.
+// Drawn lying along +x with the nib at the left; the element is then turned about the nib.
+const quillEl = $('quill'), quillSh = $('quillSh');
+const quill = { len: 150, ox: 0, oy: 0, w: 0, hop: 0, sx: 0, sy: 0, rx: 0, ry: 0, ra: 186, key: null, init: false, last: 0, job: null, slot: null, css: '', cssSh: '', lit: -1, shA: -1 };
+const QUILL_WRITE = 242;   // degrees: the feather leans up and to the left of the nib — he wrote with his left hand
+function drawFeather(c) {
+  const rnd = rng(1452), cy = 66, R = (u) => [8 + u * 386, cy - 12 * Math.sin(u * 2.5)];
+  const notch = (u, at) => at.reduce((k, u0) => Math.min(k, 1 - 0.85 * Math.max(0, 1 - Math.abs(u - u0) / 0.0045)), 1);
+  const upN = [0.58, 0.83], loN = [0.49, 0.7, 0.88];
+  c.lineCap = 'round';
+  // stubble where the lower barbs were stripped off
+  for (let u = 0.15; u < 0.28; u += 0.004) {
+    const [x, y] = R(u), l = 1.5 + rnd() * 2.6, sgn = rnd() < 0.5 ? -1 : 1;
+    c.strokeStyle = `rgba(214,200,170,${0.5 + rnd() * 0.4})`; c.lineWidth = 0.7;
+    c.beginPath(); c.moveTo(x, y); c.lineTo(x + l * 0.9, y + sgn * l); c.stroke();
+  }
+  // the vane, barb by barb
+  for (let u = 0.27; u < 0.997; u += 1 / 560) {
+    const [x, y] = R(u), w = ss(0.27, 0.43, u) * (1 - 0.74 * Math.pow(ss(0.70, 1.0, u), 1.7));
+    const tipDark = 15 * ss(0.78, 1, u), j = rnd();
+    for (const side of [-1, 1]) {
+      const wid = (side < 0 ? 17 : 33) * w * (0.93 + 0.1 * Math.sin(u * 61 + side)) * notch(u, side < 0 ? upN : loN);
+      if (wid < 0.4) continue;
+      c.strokeStyle = `hsl(${36 + j * 6},${24 + j * 10}%,${(side < 0 ? 71 : 63) - tipDark - 9 * ss(0.45, 0.0, wid / 30) + j * 8}%)`;
+      c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(x, y);
+      c.quadraticCurveTo(x + wid * 0.35, y + side * wid * 0.72, x + wid * 0.95, y + side * wid);
+      c.stroke();
+    }
+  }
+  // shade the vane: light from the upper side, the lower side falls away
+  c.globalCompositeOperation = 'source-atop';
+  const g = c.createLinearGradient(0, cy - 30, 0, cy + 36);
+  g.addColorStop(0, 'rgba(255,244,214,0.20)'); g.addColorStop(0.45, 'rgba(120,96,60,0.0)'); g.addColorStop(1, 'rgba(52,32,12,0.46)');
+  c.fillStyle = g; c.fillRect(0, 0, 400, 132);
+  c.globalCompositeOperation = 'source-over';
+  // the shaft: horn-coloured barrel thinning to a hair at the tip
+  const hw = (u) => 0.5 + 3.9 * Math.pow(1 - u, 0.9);
+  for (let i = 0; i < 120; i++) {
+    const u0 = 0.045 + (i / 120) * 0.955, u1 = 0.045 + ((i + 1.4) / 120) * 0.955, [x0, y0] = R(u0), [x1, y1] = R(Math.min(1, u1));
+    const k = ss(0.03, 0.3, u0), l = lerp(46, 74, k);
+    c.strokeStyle = `hsl(${lerp(34, 42, k)},${lerp(42, 30, k)}%,${l}%)`; c.lineWidth = hw(u0) * 2;
+    c.lineCap = 'butt'; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1, y1); c.stroke();
+  }
+  c.lineCap = 'round';
+  c.strokeStyle = 'rgba(255,252,238,0.55)'; c.lineWidth = 0.8; c.beginPath();
+  for (let u = 0.06; u <= 0.9; u += 0.02) { const [x, y] = R(u); c.lineTo(x, y - hw(u) * 0.45); } c.stroke();
+  c.strokeStyle = 'rgba(64,40,14,0.4)'; c.lineWidth = 0.8; c.beginPath();
+  for (let u = 0.05; u <= 0.95; u += 0.02) { const [x, y] = R(u); c.lineTo(x, y + hw(u) * 0.8); } c.stroke();
+  // the cut: a long scoop to a point, slit, black with ink
+  const [nx, ny] = R(0.05);
+  c.fillStyle = '#6b4a22'; c.beginPath(); c.moveTo(nx + 6, ny - hw(0.06)); c.lineTo(nx, ny - 2.6); c.lineTo(2, cy + 4.6); c.lineTo(nx + 4, ny + 4.0); c.lineTo(nx + 8, ny + hw(0.06)); c.closePath(); c.fill();
+  const ink = c.createLinearGradient(0, 0, 76, 0);
+  ink.addColorStop(0, 'rgba(26,15,6,0.98)'); ink.addColorStop(0.28, 'rgba(38,23,9,0.86)'); ink.addColorStop(1, 'rgba(46,28,10,0)');
+  c.globalCompositeOperation = 'source-atop'; c.fillStyle = ink; c.fillRect(0, 0, 80, 132); c.globalCompositeOperation = 'source-over';
+  c.strokeStyle = 'rgba(10,6,2,0.8)'; c.lineWidth = 0.5; c.beginPath(); c.moveTo(2.4, cy + 4.3); c.lineTo(17, cy + 0.6); c.stroke();
+}
+function paintQuill() {
+  const L = Math.round(clamp(Math.min(page.w, page.h) * 0.27, 118, 230)), dpr = Math.min(2, window.devicePixelRatio || 1);
+  if (L === quill.painted) return;
+  quill.painted = quill.len = L;
+  const k = L / 400, W = Math.round(L * dpr), H = Math.round(L * 0.33 * dpr);
+  quill.ox = 2 * k; quill.oy = 70.6 * k;
+  [quillEl, quillSh].forEach((el, i) => {
+    el.width = W; el.height = H;
+    Object.assign(el.style, { width: L + 'px', height: (L * 0.33) + 'px', transformOrigin: `${quill.ox}px ${quill.oy}px` });
+    const c = el.getContext('2d'); c.setTransform(k * dpr, 0, 0, k * dpr, 0, 0);
+    drawFeather(c);
+    if (i) { c.globalCompositeOperation = 'source-in'; c.fillStyle = '#000'; c.fillRect(0, 0, 400, 132); }
+  });
+}
+// Where it lies when nothing is being written: on the strip of desk, in the widest gap between the instruments.
+// With no room there (a phone), and in a recording frame, it is taken away altogether until the next line.
+function quillSlot() {
+  quill.slot = null;
+  if (!page.full || mode !== 'wb') return;
+  const L = quill.len, taken = (mc.ballot ? [] : [...document.querySelectorAll('#crank, #bench .plaque, #bench .plate, #bench .ruler')])
+    .map((el) => el.getBoundingClientRect()).filter((r) => r.width > 0).map((r) => [r.left - page.l, r.right - page.l]).sort((a, b) => a[0] - b[0]);
+  let x = page.sx, gap = [0, 0];
+  taken.concat([[page.w - page.sx, page.w]]).forEach(([a, b]) => { if (a - x > gap[1] - gap[0]) gap = [x, a]; x = Math.max(x, b); });
+  if (gap[1] - gap[0] > L + 56) quill.slot = { x: (gap[0] + gap[1]) / 2 + L * 0.5, y: page.h - page.sb * 0.5 + 6 };
+}
+function quillRest() {
+  const L = quill.len;
+  if (!page.full || mode !== 'wb') return { x: page.w * 0.4, y: page.h + L * 0.7, a: 186 };
+  if (quill.slot) return { x: quill.slot.x, y: quill.slot.y, a: 186 };
+  return { x: -24, y: page.h - page.sb - 44, a: 192 };   // no room on the desk (a phone): it is put away, off the left edge
+}
+// The nib at drawing time t, in stage pixels: the pen plan says which part, the part's own clock says how far along its line
+const penV = new THREE.Vector3();
+function penAt(t) {
+  const e = mc.penPlan.find((q) => t >= q.t0 && t < q.t1);
+  if (!e) return null;
+  const { pos, dist } = e.p.pen;
+  let lo = 0, hi = dist.length / 2 - 1;
+  while (lo < hi) { const m = (lo + hi) >> 1; if (dist[m * 2 + 1] < t) lo = m + 1; else hi = m; }
+  const u = clamp((t - dist[lo * 2]) / Math.max(1e-6, dist[lo * 2 + 1] - dist[lo * 2])), i = lo * 6;
+  toScreen(e.p.group.localToWorld(penV.set(lerp(pos[i], pos[i + 3], u), lerp(pos[i + 1], pos[i + 4], u), lerp(pos[i + 2], pos[i + 5], u))), page.w, page.h);
+  return { x: penV.x, y: penV.y, key: e };
+}
+function stepQuill(S) {
+  const now = performance.now(), dt = Math.min(0.05, (now - (quill.last || now)) / 1000); quill.last = now;
+  let tgt = null;
+  if (quill.job) { tgt = quill.job(now); if (!tgt) quill.job = null; }
+  if (!tgt && S.reveal > 0 && S.reveal < mc.MAXT) tgt = penAt(S.reveal);
+  const R = quillRest();
+  if (!quill.init) { quill.rx = R.x; quill.ry = R.y; quill.ra = R.a; quill.init = true; }
+  const kr = 1 - Math.exp(-dt / 0.2);
+  quill.rx += (R.x - quill.rx) * kr; quill.ry += (R.y - quill.ry) * kr; quill.ra += (R.a - quill.ra) * kr;
+  if (tgt) {
+    if (quill.w < 0.02) { quill.sx = tgt.x; quill.sy = tgt.y; }
+    else { const k = 1 - Math.exp(-dt / 0.05); quill.sx += (tgt.x - quill.sx) * k; quill.sy += (tgt.y - quill.sy) * k; }
+    if (tgt.key !== quill.key) { if (quill.w > 0.6) quill.hop = 1; quill.key = tgt.key; }
+    quill.w = Math.min(1, quill.w + dt / 0.3);
+  } else quill.w = Math.max(0, quill.w - dt / 0.65);
+  quill.hop *= Math.exp(-dt / 0.08);
+  const e = eio(quill.w), L = quill.len;
+  const lift = Math.sin(Math.PI * quill.w) * 30 + quill.hop * 8;
+  const x = lerp(quill.rx, quill.sx, e), y = lerp(quill.ry, quill.sy, e) - lift;
+  const a = lerp(quill.ra, QUILL_WRITE + (tgt ? Math.sin(now * 0.031) * 1.6 + Math.sin(now * 0.0127) * 2.4 : 0), e), ar = a * Math.PI / 180, fore = 1 - 0.1 * e;
+  const css = `translate(${(x - quill.ox).toFixed(1)}px,${(y - quill.oy).toFixed(1)}px) rotate(${a.toFixed(2)}deg) scaleX(${fore.toFixed(3)})`;
+  if (css !== quill.css) quillEl.style.transform = quill.css = css;
+  // the shadow: under the nib it touches the pen; the feather end stands off the paper, so its shadow falls further away
+  const h = e * L * 0.34 + lift, nx = x + 1.5 + lift * 0.55, ny = y + lift + 2.5 + lift * 0.4;
+  const vx = Math.cos(ar) * L * fore + h * 0.6, vy = Math.sin(ar) * L * fore + h * 0.8;
+  const cssSh = `translate(${(nx - quill.ox).toFixed(1)}px,${(ny - quill.oy).toFixed(1)}px) rotate(${Math.atan2(vy, vx).toFixed(4)}rad) scaleX(${(Math.hypot(vx, vy) / L).toFixed(3)})`;
+  if (cssSh !== quill.cssSh) {
+    quillSh.style.transform = quill.cssSh = cssSh;
+    const shA = Math.round((1.4 + e * 2.4 + lift * 0.09) * 4) / 4;
+    if (shA !== quill.shA) { quill.shA = shA; quillSh.style.filter = `blur(${shA}px)`; quillSh.style.opacity = (0.55 - Math.min(0.25, lift * 0.006)).toFixed(2); }
+  }
+  const lit = clamp(litAt(x + Math.cos(ar) * L * 0.5, y + Math.sin(ar) * L * 0.5), 0.55, 1);
+  if (Math.abs(lit - quill.lit) > 0.008) { quill.lit = lit; quillEl.style.filter = `brightness(${lit.toFixed(3)}) saturate(1.1)`; }
+}
+
+/* ---------- The tally on the last leaf ---------- */
+// Counts live in a small store behind /api/vote (see api/vote.js). One mark per browser, remembered in localStorage.
+// Opened from a file, or with the store out of reach, the leaf still works: the mark is then kept on this page only.
+const ballot = { el: $('ballot'), note: $('ballotNote'), cands: [...document.querySelectorAll('#ballot .cand')], counts: { crossbow: 0, car: 0, knight: 0 },
+  mine: null, live: false, state: '', keep: null, grow: 1, geo: {}, key: '', online: /^https?:/.test(location.protocol) };
+try { const v = localStorage.getItem('codex-vote'); if (v in ballot.counts) ballot.mine = v; } catch (e) { /* private window: the mark lasts for this visit */ }
+const TALLY_UNITS = [1, 5, 10, 25, 50, 100, 250, 500, 1000, 5000];
+function ballotUnit() { const top = Math.max(...Object.values(ballot.counts)); return TALLY_UNITS.find((u) => top / u <= 60) || 10000; }
+// Four strokes down and a fifth across them. Every stroke is a little different, and the same one is always the same.
+function tallyStroke(i, hgt, sp) {
+  const g = Math.floor(i / 5), k = i % 5, r = rng(977 + i * 131), x0 = g * (sp * 3 + sp * 2.6);
+  if (k < 4) { const x = x0 + k * sp + (r() - 0.5) * sp * 0.3; return [x + (r() - 0.5) * 2.2, 2 + r() * 2.5, x + (r() - 0.5) * 2.2 - 1, hgt - 1 - r() * 2.5]; }
+  return [x0 + sp * 3 + sp * 0.75, 3 + r() * 3, x0 - sp * 0.7, hgt - 3 - r() * 3];
+}
+function paintTally(cv, id, width) {
+  const unit = ballotUnit(), c = ballot.counts[id], n = c > 0 ? Math.max(1, Math.round(c / unit)) : 0, mine = ballot.mine === id;
+  const fs = parseFloat(getComputedStyle(cv.parentNode).fontSize) || 15, hgt = Math.round(fs * 1.25), sp = fs * 0.36, gw = sp * 5.6;
+  const perRow = Math.max(2, Math.floor((width + sp * 2) / gw)), gates = Math.ceil(n / 5), rows = Math.max(1, Math.ceil(gates / perRow));
+  const rowW = (g) => Math.min(perRow, g) * gw - sp * 2.6, dpr = shared.uDpr.value, W = Math.ceil(width), H = rows * (hgt + 5);
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.style.width = W + 'px'; cv.style.height = H + 'px'; }
+  const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, W, H); x.lineCap = 'round';
+  let last = null;
+  for (let i = 0; i < n; i++) {
+    const g = Math.floor(i / 5), row = Math.floor(g / perRow), inRow = Math.min(perRow, gates - row * perRow);
+    const ox = (W - rowW(inRow)) / 2 - (row * perRow) * gw + sp * 0.7, oy = row * (hgt + 5), s = tallyStroke(i, hgt, sp), r = rng(31 + i * 17);
+    const own = mine && i === n - 1, t = own ? ballot.grow : 1;
+    if (own) last = { x0: ox + s[0], y0: oy + s[1], x1: ox + s[2], y1: oy + s[3] };
+    if (t <= 0) continue;
+    x.strokeStyle = own ? 'rgba(24,13,5,0.96)' : `rgba(59,38,20,${(0.6 + r() * 0.3).toFixed(2)})`; x.lineWidth = (own ? 2.3 : 1.25 + r() * 0.7) * (fs / 15);
+    x.beginPath(); x.moveTo(ox + s[0], oy + s[1]);
+    x.quadraticCurveTo(ox + (s[0] + s[2]) / 2 + (r() - 0.5) * 2.4, oy + (s[1] + s[3]) / 2, ox + lerp(s[0], s[2], t), oy + lerp(s[1], s[3], t)); x.stroke();
+  }
+  ballot.geo[id] = last;
+}
+function ballotPaint() {
+  const unit = ballotUnit();
+  ballot.cands.forEach((b) => paintTally(b.querySelector('.tally'), b.dataset.c, b.querySelector('.lab').clientWidth * 0.94));
+  ballot.el.classList.toggle('voted', !!ballot.mine);
+  const each = unit > 1 ? ` · each stroke stands for ${unit} marks` : '';
+  ballot.note.textContent = ballot.state === 'limit' ? 'too many marks from this house today: this one was not counted'
+    : ballot.state === 'off' ? 'the tally could not be reached: your mark is kept on this page only'
+    : ballot.mine ? 'your mark is made' + each : 'make your mark beside the one you would see built next' + each;
+}
+function ballotOpen() {
+  ballot.el.classList.remove('on'); void ballot.el.offsetWidth; ballot.el.classList.add('on');
+  ballot.key = '';
+  if (!ballot.online) return;
+  fetch('/api/vote').then((r) => (r.ok ? r.json() : Promise.reject())).then((d) => { ballot.counts = d.counts; ballot.live = true; if (ballot.mine && !ballot.counts[ballot.mine]) ballot.counts[ballot.mine] = 1; ballotPaint(); }).catch(() => {});
+}
+function castVote(id) {
+  if (ballot.mine || !(id in ballot.counts)) return;
+  ballot.mine = id; ballot.counts[id]++; ballot.grow = 0;
+  try { localStorage.setItem('codex-vote', id); } catch (e) { /* kept for this visit only */ }
+  ballotPaint();
+  // the quill comes over and makes the stroke
+  const t0 = performance.now(), cv = ballot.cands.find((b) => b.dataset.c === id).querySelector('.tally');
+  let struck = false;
+  quill.job = (now) => {
+    const t = (now - t0) / 1000, g = ballot.geo[id];
+    if (!g || t > 1.25 || !mc.ballot) { ballot.grow = 1; ballotPaint(); return null; }
+    const u = reduceMotion ? 1 : clamp((t - 0.36) / 0.42), k = u * u * (3 - 2 * u), r = cv.getBoundingClientRect(), sr = stage.getBoundingClientRect();
+    if (u > 0 && !struck) { struck = true; Snd.stroke(); }
+    if (k !== ballot.grow) { ballot.grow = k; paintTally(cv, id, cv.clientWidth); }
+    return { x: r.left - sr.left + lerp(g.x0, g.x1, k), y: r.top - sr.top + lerp(g.y0, g.y1, k), key: 'tally' };
+  };
+  if (!ballot.online) return;
+  fetch('/api/vote', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    .then((r) => r.json().then((d) => ({ status: r.status, d })))
+    .then(({ status, d }) => {
+      if (d && d.counts) { ballot.counts = d.counts; ballot.live = true; if (!ballot.counts[id]) ballot.counts[id] = 1; }
+      ballot.state = status === 429 ? 'limit' : status === 200 ? '' : 'off';
+      ballotPaint();
+    })
+    .catch(() => { ballot.state = 'off'; ballotPaint(); });
+}
+ballot.cands.forEach((b) => b.addEventListener('click', () => castVote(b.dataset.c)));
+// Each sketch's button lies over it and over the writing under it; it follows the sheet when the window changes
+const balP = new THREE.Vector3(), balQ = new THREE.Vector3();
+function placeBallot() {
+  const v = ballotView(), w = page.w, h = page.h;
+  ballotAt(0, balP, v); toScreen(balQ.copy(balP).add(balR), w, h); toScreen(balP, w, h);
+  const ppu = Math.hypot(balQ.x - balP.x, balQ.y - balP.y), fs = parseFloat(getComputedStyle(ballot.cands[0]).fontSize) || 16;
+  const labW = Math.min(v.row ? balPx.w / 3 - 18 : balPx.w - 24, 23 * fs), key = [w, h, ppu.toFixed(2), v.row].join();
+  if (key === ballot.key) return;
+  ballot.key = key;
+  ballot.el.classList.toggle('col', !v.row);
+  ballot.el.classList.toggle('tight', v.row && balPx.free < 400);   // a low, wide sheet (a phone on its side): the name and the tally only
+  ballot.cands.forEach((b) => { b.style.width = labW + 'px'; });
+  ballotPaint();
+  const labH = Math.max(...ballot.cands.map((b) => b.querySelector('.lab').offsetHeight)), footH = ballot.note.offsetHeight + 14;
+  if (Math.abs(labH - balPx.lab) > 1 || Math.abs(footH - balPx.foot) > 1) { balPx.lab = labH; balPx.foot = footH; ballot.key = ''; }   // the writing came out taller or shorter than allowed for: set out again next frame
+  ballot.cands.forEach((b, i) => {
+    toScreen(ballotAt(i, balP, v), w, h);
+    const top = balP.y - BAL[i].top * ppu, H = (BAL[i].top + BAL[i].bot + 0.1) * ppu + b.querySelector('.lab').offsetHeight;
+    Object.assign(b.style, { height: H + 'px', transform: `translate(${Math.round(balP.x - labW / 2)}px, ${Math.round(top)}px)` });
+  });
+}
+
 /* ---------- Main loop ---------- */
 const scrub = $('scrub'), timeEl = $('time'), playBtn = $('play');
 let last = performance.now(), scrubbing = false, dragging = false;
+let frameErr = false;
 function frame(now) {
+  requestAnimationFrame(frame);   // asked for first: if anything below goes wrong, the page still moves on to the next frame
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  mirrorV += ((mirrorOn ? 1 : 0) - mirrorV) * (1 - Math.exp(-dt * 6));
-  if (mode === 'wb') render(stepWorkbench(dt, now), false);
-  else {
-    const dur = PRESETS[preset].dur;
-    if (playing) T = (T + dt) % dur;
-    renderCine(!playing);
-    if (!scrubbing) scrub.value = Math.round((T / dur) * 1000);
-    timeEl.textContent = T.toFixed(1) + 's';
-  }
-  requestAnimationFrame(frame);
+  try {
+    mirrorV += ((mirrorOn ? 1 : 0) - mirrorV) * (1 - Math.exp(-dt * 6));
+    if (mode === 'wb') render(stepWorkbench(dt, now), false);
+    else {
+      const dur = PRESETS[preset].dur;
+      if (playing) T = (T + dt) % dur;
+      renderCine(!playing);
+      if (!scrubbing) scrub.value = Math.round((T / dur) * 1000);
+      timeEl.textContent = T.toFixed(1) + 's';
+    }
+  } catch (e) { if (!frameErr) { frameErr = true; console.error(e); } }
 }
 
 /* ---------- Switching ---------- */
 function press(sel, match) { document.querySelectorAll(sel).forEach((b) => b.setAttribute('aria-pressed', String(match(b)))); }
 function swapMachine(id, redraw) {
+  const was = mc.ballot;
   mc = MACHINES[id];
   Object.values(MACHINES).forEach((m) => { m.root.visible = m === mc; });
+  document.body.classList.toggle('ballot', !!mc.ballot);
+  if (mc.ballot && !was) {            // the last leaf is ink only and nothing on it comes apart: remember how the others were left
+    ballot.keep = { style: wb.style, split: wb.splitGoal, e: wb.eGoal, peek: wb.peekT };
+    wb.style = 'ink'; wb.split = wb.splitGoal = STYLE_X.ink; setExplode(0); wb.e = 0; wb.peekT = null;
+    ballotOpen();
+  } else if (!mc.ballot && was && ballot.keep) {
+    const k = ballot.keep; ballot.keep = null;
+    wb.style = k.style; wb.split = wb.splitGoal = k.split; setExplode(k.e * 100); wb.peekT = k.peek;
+    press('[data-style]', (b) => b.dataset.style === wb.style);
+  }
   $('tName').textContent = mc.name; $('tSub').textContent = mc.sub;
   select(null); wb.dim = 0; wb.focus = null; noteGeo.on = false; wb.camInit = false; wb.az = page.portrait && mc.azTall !== undefined ? mc.azTall : mc.az0; wb.azTo = null; wb.azV = wb.elV = 0;
   hover.part = null; hover.a = 0; wb.lift = wb.yaw = 0;
@@ -2552,7 +3250,7 @@ function setPreset(p) {
   if (PRESETS[p].machine && mc.id !== PRESETS[p].machine) setMachine(PRESETS[p].machine, false, false);
   setPlaying(true);
 }
-function setStyle(s) { wb.style = s; wb.splitGoal = STYLE_X[s]; press('[data-style]', (b) => b.dataset.style === s); }
+function setStyle(s) { if (mc.ballot) return; wb.style = s; wb.splitGoal = STYLE_X[s]; press('[data-style]', (b) => b.dataset.style === s); }
 function setPlaying(v) { playing = v; playBtn.textContent = v ? 'PAUSE' : 'PLAY'; }
 function setMirror(v) { mirrorOn = v; lensEl.classList.toggle('flip', v); lensEl.setAttribute('aria-pressed', String(v)); }
 function setExplode(pct) { wb.eGoal = pct / 100; $('explode').value = pct; }
@@ -2564,6 +3262,7 @@ function setMaker(v) { maker = v; document.body.classList.toggle('maker', v); if
 /* ---------- Interaction ---------- */
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
 function pick(ev) {
+  if (mc.ballot) return null;   // the sketches on the last leaf are pressed as a whole, through their buttons
   const r = stage.getBoundingClientRect();
   ndc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
   ray.setFromCamera(ndc, camera);
@@ -2593,6 +3292,8 @@ const zoomBy = (z) => { if (mode === 'wb') wb.zoom = clamp(wb.zoom * z, 0.4, 1.8
 const pointers = new Map();
 let px = 0, py = 0, moved = 0, lastHover = 0, pinchD = 0, moveT = 0, riderDown = -1e9, riderReset = -1e9;
 stage.addEventListener('pointerdown', (ev) => {
+  // the sheet captures the pointer so a drag can turn the machine; that would also swallow the click on a vote button
+  if (ev.target.closest && ev.target.closest('#ballot .cand')) return;
   pointers.set(ev.pointerId, [ev.clientX, ev.clientY]);
   stage.setPointerCapture(ev.pointerId);
   if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinchD = Math.hypot(a[0] - b[0], a[1] - b[1]); dragging = false; wb.dragSplit = false; return; }
@@ -2790,14 +3491,22 @@ if (q.get('mode') === 'cine') { if (q.get('preset') === 'viral') setPreset('vira
 if (q.get('t')) { T = +q.get('t'); setPlaying(false); wb.revealT = 1; }
 if (q.get('lens')) { const [fx, fy] = q.get('lens').split(',').map(Number); lens.x = fx * page.w; lens.y = fy * page.h; lens.home = false; }
 if (q.get('nohint')) ['split', 'lens', 'drive', 'explode', 'pick'].forEach(did);
+// The book has lain shut since the first moment (see the small script above). Give it a second in all, then lift the
+// cover; the pen starts a moment before, so the first lines are already on the page when it comes into view.
+const lift = window.__book ? Math.max(0, 1000 - (performance.now() - window.__book.t0)) : 0;
+if (window.__book) {
+  setTimeout(() => { bookShut = false; }, Math.max(0, lift - 180));
+  setTimeout(() => { if (window.__book) window.__book.open(); Snd.page(); }, lift);
+}
 // hand-written prompts appear once the drawing is finished, and bow out on their own
-setTimeout(() => { document.body.classList.add('hints'); if (!reduceMotion) lensEl.classList.add('nudge'); }, reduceMotion ? 300 : 2700);
-setTimeout(() => document.body.classList.remove('hints'), 24000);
+setTimeout(() => { document.body.classList.add('hints'); if (!reduceMotion) lensEl.classList.add('nudge'); }, lift + (reduceMotion ? 300 : 2700));
+setTimeout(() => document.body.classList.remove('hints'), lift + 24000);
 // test / recording hooks
 window.__seek = (t) => { T = t; setPlaying(false); if (mode === 'cine') renderCine(true); };
-window.__codex = { wb, lens, page, done, setMaker, setAuto, setMode, setPreset, setMachine, setStyle, setExplode, setMirror, setDrawer, select: (id) => select(mc.byId[id]), machines: MACHINES, renderer };
+window.__codex = { wb, lens, page, done, setMaker, setAuto, setMode, setPreset, setMachine, setStyle, setExplode, setMirror, setDrawer, quill, ballot, castVote, select: (id) => select(mc.byId[id]), machines: MACHINES, renderer };
 document.fonts && document.fonts.ready.then(resize);
 $('loading').remove();
+document.body.classList.add('ready');
 requestAnimationFrame((n) => { last = n; frame(n); });
 </script>
 </body>

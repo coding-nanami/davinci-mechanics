@@ -63,6 +63,10 @@ mkdirSync(OUT_DIR, { recursive: true });
 writeFileSync(OUT, html);
 copyFileSync('og.jpg', OUT_DIR + '/og.jpg');
 
+// The one server-side piece: the tally for the last leaf. Vercel turns any file under api/ into a function.
+mkdirSync(OUT_DIR + '/api', { recursive: true });
+copyFileSync('api/vote.js', OUT_DIR + '/api/vote.js');
+
 // Carry the Vercel project link into dist, so `vercel deploy dist` publishes to
 // the same davinci-mechanics project instead of trying to create a new one.
 if (existsSync('.vercel/project.json')) {

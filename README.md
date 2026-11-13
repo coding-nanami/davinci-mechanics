@@ -1,6 +1,6 @@
 # Da Vinci's Living Codex
 
-Three of Leonardo da Vinci's machines, the ornithopter, the self-propelled cart and the aerial screw, each drawn in ink on a notebook leaf and rebuilt in timber, in the browser. Everything is generated in code: the geometry, the paper, the ink lines and the sound. The page itself loads no image, model or audio files (the pictures below are only screenshots for this README).
+Three of Leonardo da Vinci's machines, the ornithopter, the self-propelled cart and the aerial screw, each drawn in ink on a notebook leaf and rebuilt in timber, in the browser. Everything is generated in code: the geometry, the paper, the ink lines, the leather cover, the quill and the sound. The page itself loads no image, model or audio files (the pictures below are only screenshots for this README).
 
 **[Open it in your browser → davinci-mechanics.vercel.app](https://davinci-mechanics.vercel.app)**
 
@@ -18,6 +18,23 @@ Three of Leonardo da Vinci's machines, the ornithopter, the self-propelled cart 
     <td align="center"><b>III · The Aerial Screw</b><br><sub>Paris Manuscript B f. 83v · c. 1489</sub></td>
   </tr>
 </table>
+
+### A book that opens by itself
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/media/cover.jpg" alt="The shut book on the desk: calf leather, blind-tooled, a circle and a square with a man pressed into them"></td>
+    <td width="50%"><img src="docs/media/quill.jpg" alt="The quill drawing the self-propelled cart, its shadow on the page"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>The page opens on a shut book. After a second the cover lifts, and the first leaf is already being drawn.</sub></td>
+    <td align="center"><sub>A quill follows the line being drawn, then lies down on the desk.</sub></td>
+  </tr>
+</table>
+
+![The last leaf: the giant crossbow, the armoured car and the mechanical knight, each only begun, with a place for tally marks under each](docs/media/vote.jpg)
+
+<sub>The last leaf: three machines he drew that are not in this book yet. Press the one you would see built next, and the quill adds a tally stroke beside it.</sub>
 
 ### The 15-second cut (click to play)
 
@@ -52,6 +69,8 @@ Open `index.html` in a browser. It is one file with no build step. It needs a ne
 
 ## What you can do on the page
 
+The page opens on a shut book: calf leather, blind-tooled, with a circle, a square and a man pressed into it. After a second the cover lifts by itself and the first leaf is already being drawn. A quill goes where the line is being drawn, then lies down on the desk; it comes back to write the note when you pick a part.
+
 The sheet lies on a walnut desk. The instruments lie on the strip of desk below the sheet, so nothing covers the drawing.
 
 - Scroll, hold Space, or turn the brass crank (bottom left) to drive the machine. It coasts when you stop. Tap the crank to stop the machine, tap again to start it.
@@ -59,7 +78,8 @@ The sheet lies on a walnut desk. The instruments lie on the strip of desk below 
 - Slide the brass rule (bottom right) to pull the machine apart while it keeps moving.
 - Hover a part to see its name, click or tap it for a note written on the page.
 - Drag the hand mirror over the mirror writing to read it. Click the mirror to turn the whole page.
-- The tabs above the sheet turn to the other leaves: I Ornithopter, II Self-Propelled Cart, III Aerial Screw.
+- The silk markers at the head of the book turn to the other leaves: I Ornithopter, II Self-Propelled Cart, III Aerial Screw, IV What Next?
+- On the last leaf, three machines are only begun: the giant crossbow, the armoured car, the mechanical knight. Press the one you would see built next and the quill adds a tally stroke beside it (four down, one across). One mark per browser.
 - Top right: `Sound` turns on the synthesised audio.
 
 Keys: `1` `2` `3` ink / half / timber, `M` mirror, `S` sound, `+` `-` zoom, `Esc` close a note.
@@ -67,6 +87,14 @@ Keys: `1` `2` `3` ink / half / timber, `M` mirror, `S` sound, `+` `-` zoom, `Esc
 The aerial screw turns once for each turn of the crank. Drive it well past its working speed (scroll, or wind the crank fast) and it lifts off its shadow, while the deck creeps round the other way: the men push against the deck, so nothing holds it still. Pulled apart on a wide sheet, its canes, wire and cloth are set down beside the shaft and go on turning there; on a tall sheet they are lifted off above it, one over the other.
 
 On a phone the same objects are sized for a thumb. On a tall screen the machine starts three-quarter on so both wings fit, the mirror writing and the mirror move to the foot of the sheet, part notes are written across the page under the machine, and the names in the pulled-apart view go in two columns down the margins.
+
+## The tally on the last leaf
+
+The marks are counted by one small function, `api/vote.js`, which keeps three numbers in a Redis hash (Upstash, connected through the Vercel Marketplace). The rest of the page never talks to a server.
+
+- The page remembers in the browser's own storage that a mark was made. Clearing the storage allows another: this cannot be prevented from the page.
+- The function allows at most three marks a day from one network address. It does not store the address, only a keyed hash of it, which is deleted after a day. It sets no cookies.
+- Opened from a file, or published without a store, the leaf still works: the mark is then kept on that page only, and the foot of the sheet says so.
 
 ## Maker tools
 
@@ -84,24 +112,22 @@ An address that already asks for a recording state (`mode`, `preset`, `ar`, `cle
 | --- | --- |
 | `index.html` | The page. This is the source; edit it directly. |
 | `build.mjs` | Build step: minifies the inline CSS and scripts into `dist/index.html` for publishing. |
-| `og.jpg` | Preview image for link cards. |
+| `api/vote.js` | The tally for the last leaf: a Vercel function over a Redis hash. The only server-side code. |
+| `og.jpg` | Preview image for link cards: the three leaves on the desk. |
 | `docs/media/` | Screenshots, the animated picture and the 15-second video used in this README. Not part of the page. |
-| `index-v1.html` | The first version of this page, kept for comparison. |
-| `cart-original.html` | The cart-only page the project started from. |
-| `compare.html`, `compare/` | Drag-to-compare screenshots of the first version against the second. |
-| `compare-v3.html`, `compare/v3/` | Drag-to-compare screenshots of the second version against the third (phone layout, desk strip, rider). |
-| `compare-v4.html`, `compare/v4/` | Screenshots and screen recordings of the third leaf, the aerial screw. |
 
-The published site is `dist/index.html` (built), not the source `index.html`. `index-v1.html`, `cart-original.html`, the compare pages and `compare/` stay in the repository only.
+The published site is `dist/` (built: the page, `og.jpg` and `api/vote.js`), not the source `index.html`.
 
 ## Build and deploy
 
 The deployed page is minified so it loads faster (about a third smaller); the readable source is `index.html`, here in the repository.
 
 ```
-node build.mjs        # writes dist/index.html (inline CSS and JS minified by esbuild) + dist/og.jpg
+node build.mjs        # writes dist/index.html (inline CSS and JS minified by esbuild), dist/og.jpg and dist/api/vote.js
 vercel deploy --prod --yes --scope coding-nanami dist
 ```
+
+For the tally, the Vercel project needs an Upstash Redis store connected to it (Storage → Create → Upstash for Redis); that sets `KV_REST_API_URL` and `KV_REST_API_TOKEN`, which is all `api/vote.js` reads. Preview deployments count into a separate test tally. Without a store the function answers 503 and the leaf keeps marks on the page only.
 
 esbuild is fetched on demand via `npx`; nothing is added to the repository. `dist/` is generated and git-ignored; `build.mjs` copies the Vercel project link into it so the deploy targets the same `davinci-mechanics` project.
 
@@ -111,7 +137,8 @@ The URL hash sets a starting state, for example:
 
 - `#mode=cine&preset=viral&t=9.6` — the 15 s cut, paused at 9.6 s
 - `#style=ink&explode=100&auto=0&phase=1.2&az=0.87` — ink sketch, fully pulled apart, frozen
-- `#m=cart`, `#m=screw` — open on the cart, or on the aerial screw
+- `#m=cart`, `#m=screw`, `#m=vote` — open on the cart, the aerial screw, or the last leaf
+- `#cover=0` — no cover, straight to the page (recording links skip it by themselves); `#cover=worn`, `#cover=plain` — the two other covers
 - `#ar=9:16&clean=1` — portrait recording frame without controls
 - `#nohint=1` — no hand-written prompts and no opening slide of the divider
 
@@ -122,6 +149,10 @@ The URL hash sets a starting state, for example:
 The machines are reconstructions made for this page, not measured copies of the drawings. The Italian mirror-script lines and the notes on the parts were written for this page and have not been checked by a historian.
 
 On the aerial screw, the title line and the four margin notes are Leonardo's own sentence about it ("Trovo, se questo strumento a vite sarà ben fatto … monterà in alto"), as quoted on the Italian Wikipedia page "Vite aerea"; it was not checked against the manuscript. The show-through writing and the part names are from memory of the rest of his note and are unchecked. The crew of four on the platform is a later reading (his note names no driver), and the struts, collar, push bars and stay cords are this page's guess at what the sketch leaves out.
+
+On the last leaf, the three sketches are rough guesses at the look of each machine, not reconstructions. Their dates and sources (giant crossbow: Codex Atlanticus f. 149r, c. 1490, about twenty-four metres across; armoured car: British Museum, c. 1487; mechanical knight: Codex Atlanticus, c. 1495) are from memory and unchecked. So are the two pieces of Italian there: "dimmi se mai fu fatta alcuna cosa" (a phrase he scribbled many times) and, showing through from the back, the line about covered chariots from his letter to Ludovico Sforza.
+
+The cover is not a copy of any binding of his notebooks.
 
 ## Licence
 
