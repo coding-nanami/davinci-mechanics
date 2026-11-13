@@ -1,8 +1,50 @@
 # Da Vinci's Living Codex
 
-Three of Leonardo da Vinci's machines, the ornithopter, the self-propelled cart and the aerial screw, each drawn in ink on a notebook leaf and rebuilt in timber, in the browser. Everything is generated in code: the geometry, the paper, the ink lines and the sound. There are no image, model or audio files.
+Three of Leonardo da Vinci's machines, the ornithopter, the self-propelled cart and the aerial screw, each drawn in ink on a notebook leaf and rebuilt in timber, in the browser. Everything is generated in code: the geometry, the paper, the ink lines and the sound. The page itself loads no image, model or audio files (the pictures below are only screenshots for this README).
 
-Live: https://davinci-mechanics.vercel.app
+**[Open it in your browser → davinci-mechanics.vercel.app](https://davinci-mechanics.vercel.app)**
+
+![The ornithopter beating its wings while the border between ink sketch and timber model sweeps across it](docs/media/hero.gif)
+
+<table>
+  <tr>
+    <td width="33%"><a href="https://davinci-mechanics.vercel.app"><img src="docs/media/orni.jpg" alt="The Great Ornithopter, half ink, half timber"></a></td>
+    <td width="33%"><a href="https://davinci-mechanics.vercel.app/#m=cart"><img src="docs/media/cart.jpg" alt="The Self-Propelled Cart, half ink, half timber"></a></td>
+    <td width="33%"><a href="https://davinci-mechanics.vercel.app/#m=screw"><img src="docs/media/screw.jpg" alt="The Aerial Screw, half ink, half timber"></a></td>
+  </tr>
+  <tr>
+    <td align="center"><b>I · The Great Ornithopter</b><br><sub>Codex Atlanticus f. 846v · c. 1488</sub></td>
+    <td align="center"><b>II · The Self-Propelled Cart</b><br><sub>Codex Atlanticus f. 812r · c. 1478</sub></td>
+    <td align="center"><b>III · The Aerial Screw</b><br><sub>Paris Manuscript B f. 83v · c. 1489</sub></td>
+  </tr>
+</table>
+
+### The 15-second cut (click to play)
+
+[![Watch the 15-second cut: the ornithopter bursts apart, turns back to ink, snaps shut and flies](docs/media/codex-15s-poster.jpg)](docs/media/codex-15s.mp4)
+
+<sub>Click the picture to play the video (`docs/media/codex-15s.mp4`). It is the page's own cinematic mode, recorded straight from the browser.</sub>
+
+### Pull it apart, read the notes, hold up the mirror
+
+![The aerial screw pulled apart: canes, iron wire and linen set down beside the shaft, every part named](docs/media/apart.jpg)
+
+<table>
+  <tr>
+    <td width="40%"><img src="docs/media/mirror.jpg" alt="The hand mirror held over Leonardo's mirror writing turns it into plain English"></td>
+    <td width="60%"><img src="docs/media/note.jpg" alt="The push bars picked on the aerial screw: their note is written on the page and the rest of the machine fades to a sketch"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub>Leonardo wrote backwards. Drag the hand mirror over his notes to read them.</sub></td>
+    <td align="center"><sub>Tap any part: the rest fades back to a sketch and a note is written on the page.</sub></td>
+  </tr>
+</table>
+
+<img src="docs/media/phone.jpg" width="260" align="right" alt="On a phone: the aerial screw pulled apart into a tower, names down both margins">
+
+**On a phone** the same objects are sized for a thumb, and a tall sheet gets its own layouts: here the aerial screw comes apart as a tower, with the names written down both margins.
+
+<br clear="right">
 
 ## Run it
 
@@ -43,6 +85,7 @@ An address that already asks for a recording state (`mode`, `preset`, `ar`, `cle
 | `index.html` | The page. This is the source; edit it directly. |
 | `build.mjs` | Build step: minifies the inline CSS and scripts into `dist/index.html` for publishing. |
 | `og.jpg` | Preview image for link cards. |
+| `docs/media/` | Screenshots, the animated picture and the 15-second video used in this README. Not part of the page. |
 | `index-v1.html` | The first version of this page, kept for comparison. |
 | `cart-original.html` | The cart-only page the project started from. |
 | `compare.html`, `compare/` | Drag-to-compare screenshots of the first version against the second. |
