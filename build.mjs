@@ -4,9 +4,8 @@
 //
 // Reads index.html (the source you edit) and writes dist/index.html, with the
 // inline CSS and both inline scripts minified by esbuild — variable names
-// mangled, comments and whitespace gone — so the deployed page is awkward to
-// read and copy. This is a deterrent, not real protection: anyone can still
-// view source and re-indent it. The source of truth stays index.html.
+// mangled, comments and whitespace gone — so the deployed page is about a
+// third smaller. The source of truth stays index.html.
 //
 // esbuild is fetched on demand through `npx --yes esbuild`; nothing is added to
 // the repository or committed.

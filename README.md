@@ -53,14 +53,14 @@ The published site is `dist/index.html` (built), not the source `index.html`. `i
 
 ## Build and deploy
 
-The deployed page is minified so it is awkward to read and copy; the source stays `index.html`.
+The deployed page is minified so it loads faster (about a third smaller); the readable source is `index.html`, here in the repository.
 
 ```
 node build.mjs        # writes dist/index.html (inline CSS and JS minified by esbuild) + dist/og.jpg
 vercel deploy --prod --yes --scope coding-nanami dist
 ```
 
-esbuild is fetched on demand via `npx`; nothing is added to the repository. `dist/` is generated and git-ignored; `build.mjs` copies the Vercel project link into it so the deploy targets the same `davinci-mechanics` project. Minifying only slows down casual copying — the code is still visible in the browser.
+esbuild is fetched on demand via `npx`; nothing is added to the repository. `dist/` is generated and git-ignored; `build.mjs` copies the Vercel project link into it so the deploy targets the same `davinci-mechanics` project.
 
 ## Starting states for testing and recording
 
@@ -82,4 +82,6 @@ On the aerial screw, the title line and the four margin notes are Leonardo's own
 
 ## Licence
 
-No licence has been chosen yet.
+The code is under the MIT licence: see `LICENSE`. Use it, change it, sell it; keep the copyright notice.
+
+Not covered by that licence, and not in this repository: three.js (MIT, fetched from jsDelivr) and the IM Fell English fonts (SIL Open Font Licence, fetched from Google Fonts). Leonardo's own words quoted on the page are in the public domain.
