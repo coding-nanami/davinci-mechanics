@@ -38,13 +38,25 @@ An address that already asks for a recording state (`mode`, `preset`, `ar`, `cle
 | File | What it is |
 | --- | --- |
 | `index.html` | The page. This is the source; edit it directly. |
+| `build.mjs` | Build step: minifies the inline CSS and scripts into `dist/index.html` for publishing. |
 | `og.jpg` | Preview image for link cards. |
 | `index-v1.html` | The first version of this page, kept for comparison. |
 | `cart-original.html` | The cart-only page the project started from. |
 | `compare.html`, `compare/` | Drag-to-compare screenshots of the first version against the second. |
 | `compare-v3.html`, `compare/v3/` | Drag-to-compare screenshots of the second version against the current one (phone layout, desk strip, rider). |
 
-Only `index.html` and `og.jpg` are deployed (see `.vercelignore`).
+The published site is `dist/index.html` (built), not the source `index.html`. `index-v1.html`, `cart-original.html`, the compare pages and `compare/` stay in the repository only.
+
+## Build and deploy
+
+The deployed page is minified so it is awkward to read and copy; the source stays `index.html`.
+
+```
+node build.mjs        # writes dist/index.html (inline CSS and JS minified by esbuild) + dist/og.jpg
+vercel deploy --prod --yes --scope coding-nanami dist
+```
+
+esbuild is fetched on demand via `npx`; nothing is added to the repository. `dist/` is generated and git-ignored; `build.mjs` copies the Vercel project link into it so the deploy targets the same `davinci-mechanics` project. Minifying only slows down casual copying — the code is still visible in the browser.
 
 ## Starting states for testing and recording
 
