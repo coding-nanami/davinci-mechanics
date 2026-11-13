@@ -1,6 +1,6 @@
 # Da Vinci's Living Codex
 
-Two of Leonardo da Vinci's machines, the ornithopter and the self-propelled cart, drawn in ink on a notebook leaf and rebuilt in timber, in the browser. Everything is generated in code: the geometry, the paper, the ink lines and the sound. There are no image, model or audio files.
+Three of Leonardo da Vinci's machines, the ornithopter, the self-propelled cart and the aerial screw, each drawn in ink on a notebook leaf and rebuilt in timber, in the browser. Everything is generated in code: the geometry, the paper, the ink lines and the sound. There are no image, model or audio files.
 
 Live: https://davinci-mechanics.vercel.app
 
@@ -17,9 +17,12 @@ The sheet lies on a walnut desk. The instruments lie on the strip of desk below 
 - Slide the brass rule (bottom right) to pull the machine apart while it keeps moving.
 - Hover a part to see its name, click or tap it for a note written on the page.
 - Drag the hand mirror over the mirror writing to read it. Click the mirror to turn the whole page.
+- The tabs above the sheet turn to the other leaves: I Ornithopter, II Self-Propelled Cart, III Aerial Screw.
 - Top right: `Sound` turns on the synthesised audio.
 
 Keys: `1` `2` `3` ink / half / timber, `M` mirror, `S` sound, `+` `-` zoom, `Esc` close a note.
+
+The aerial screw turns once for each turn of the crank. Drive it well past its working speed (scroll, or wind the crank fast) and it lifts off its shadow, while the deck creeps round the other way: the men push against the deck, so nothing holds it still. Pulled apart on a wide sheet, its canes, wire and cloth are set down beside the shaft and go on turning there; on a tall sheet they are lifted off above it, one over the other.
 
 On a phone the same objects are sized for a thumb. On a tall screen the machine starts three-quarter on so both wings fit, the mirror writing and the mirror move to the foot of the sheet, part notes are written across the page under the machine, and the names in the pulled-apart view go in two columns down the margins.
 
@@ -43,7 +46,8 @@ An address that already asks for a recording state (`mode`, `preset`, `ar`, `cle
 | `index-v1.html` | The first version of this page, kept for comparison. |
 | `cart-original.html` | The cart-only page the project started from. |
 | `compare.html`, `compare/` | Drag-to-compare screenshots of the first version against the second. |
-| `compare-v3.html`, `compare/v3/` | Drag-to-compare screenshots of the second version against the current one (phone layout, desk strip, rider). |
+| `compare-v3.html`, `compare/v3/` | Drag-to-compare screenshots of the second version against the third (phone layout, desk strip, rider). |
+| `compare-v4.html`, `compare/v4/` | Screenshots and screen recordings of the third leaf, the aerial screw. |
 
 The published site is `dist/index.html` (built), not the source `index.html`. `index-v1.html`, `cart-original.html`, the compare pages and `compare/` stay in the repository only.
 
@@ -64,7 +68,7 @@ The URL hash sets a starting state, for example:
 
 - `#mode=cine&preset=viral&t=9.6` — the 15 s cut, paused at 9.6 s
 - `#style=ink&explode=100&auto=0&phase=1.2&az=0.87` — ink sketch, fully pulled apart, frozen
-- `#m=cart` — open on the cart
+- `#m=cart`, `#m=screw` — open on the cart, or on the aerial screw
 - `#ar=9:16&clean=1` — portrait recording frame without controls
 - `#nohint=1` — no hand-written prompts and no opening slide of the divider
 
@@ -73,6 +77,8 @@ The URL hash sets a starting state, for example:
 ## Accuracy
 
 The machines are reconstructions made for this page, not measured copies of the drawings. The Italian mirror-script lines and the notes on the parts were written for this page and have not been checked by a historian.
+
+On the aerial screw, the title line and the four margin notes are Leonardo's own sentence about it ("Trovo, se questo strumento a vite sarà ben fatto … monterà in alto"), as quoted on the Italian Wikipedia page "Vite aerea"; it was not checked against the manuscript. The show-through writing and the part names are from memory of the rest of his note and are unchecked. The crew of four on the platform is a later reading (his note names no driver), and the struts, collar, push bars and stay cords are this page's guess at what the sketch leaves out.
 
 ## Licence
 

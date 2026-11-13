@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>验收 · 第三页：空中螺旋</title>
+<style>
+  body { margin: 0; background: #17100a; color: #e9dcc0; font: 16px/1.65 -apple-system, "PingFang SC", "Noto Sans SC", "Microsoft YaHei", sans-serif; }
+  main { max-width: 1120px; margin: 0 auto; padding: 28px 16px 80px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 19px; margin: 44px 0 4px; color: #f1d9a0; }
+  p { margin: 4px 0 12px; color: rgba(233, 220, 192, 0.82); }
+  a { color: #f1d9a0; }
+  .tip { border: 1px solid rgba(201, 153, 74, 0.4); border-radius: 6px; padding: 12px 16px; margin: 16px 0 0; background: rgba(255, 230, 180, 0.04); }
+  .tip b { color: #f1d9a0; }
+  .tip ul { margin: 6px 0 0; padding-left: 20px; }
+  .ba { position: relative; margin: 0; --p: 50%; border: 1px solid rgba(201, 153, 74, 0.35); border-radius: 4px; overflow: hidden; touch-action: pan-y; cursor: ew-resize; }
+  .ba.narrow { max-width: 390px; }
+  .ba img { display: block; width: 100%; height: auto; user-select: none; -webkit-user-drag: none; }
+  .ba img.old { position: absolute; inset: 0; clip-path: inset(0 calc(100% - var(--p)) 0 0); }
+  .ba::after { content: ""; position: absolute; top: 0; bottom: 0; left: var(--p); width: 2px; margin-left: -1px; background: #f1d9a0; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5); pointer-events: none; }
+  .ba span { position: absolute; top: 10px; padding: 2px 10px; border-radius: 3px; background: rgba(0, 0, 0, 0.62); font-size: 13px; pointer-events: none; }
+  .ba span.l { left: 10px; } .ba span.r { right: 10px; }
+  .row { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+  .row > div { flex: 1 1 300px; min-width: 0; }
+  video, .solo { display: block; max-width: 100%; border: 1px solid rgba(201, 153, 74, 0.35); border-radius: 4px; }
+  .solo.narrow { max-width: 390px; } .solo.land { max-width: 844px; }
+  ol, ul { margin: 6px 0 12px; padding-left: 22px; color: rgba(233, 220, 192, 0.82); }
+  li { margin: 3px 0; }
+  code { background: rgba(255, 230, 180, 0.1); padding: 1px 6px; border-radius: 3px; color: #f1d9a0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>验收 · 第三页：空中螺旋（Aerial Screw）</h1>
+  <p>第三个页签原来是一把锁，现在是一台完整的机器。下面的图和录屏都来自现在的 <a href="index.html#m=screw">index.html</a>（还没有提交，也没有发布）。带分界线的图可以左右拖动。</p>
+
+  <h2>先看两段录屏</h2>
+  <p>白色圆点是鼠标 / 手指的位置，只是录屏时加的标记，页面里没有。</p>
+  <div class="row">
+    <div>
+      <video src="compare/v4/screw-desktop.mp4" controls muted loop playsinline autoplay style="width: 100%"></video>
+      <p>电脑（56 秒）：画出来 → 拖分界线 → 推到纸边变成全实木 → 转动视角 → 滚轮把它转快，它离开影子升起来，底盘开始反着转 → 看“推杆”的批注 → 拉铜尺拆开 → 点镜子把反写字翻成英文 → 合上。</p>
+    </div>
+    <div style="flex: 0 0 300px">
+      <video src="compare/v4/screw-phone.mp4" controls muted loop playsinline style="width: 300px"></video>
+      <p>手机竖屏（46 秒）：从扑翼机点第三个页签翻页 → 拖滑块 → 快转摇柄让它升起来 → 看“亚麻布”的批注 → 拆开。</p>
+    </div>
+  </div>
+
+  <h2>1. 打开第一眼</h2>
+  <p>一根立轴，上面是绕了两圈的亚麻布螺旋面，下面是圆形木平台。螺旋面由三样东西组成：从立轴向外伸的芦苇杆（每 30 度一根）、沿杆尖绕一圈的铁丝边、铺在上面的布。轴顶拉下四根绳子，把铁丝边吊住。平台上四根斜撑扶住立轴，斜撑中间是给人推着走的十字推杆。螺旋下方那几圈淡墨线，是它转动时在空气里“拧出来的螺纹”，会跟着转、慢慢下沉。</p>
+  <img class="solo" src="compare/v4/d1_hero.jpg" alt="空中螺旋，半墨半木">
+
+  <h2>2. 墨线稿 ↔ 实木（同一个姿势，拖动对比）</h2>
+  <p>布在墨线稿里是一层淡淡的斜线，会挡住后面的线（否则两圈螺旋的线全叠在一起，看不清）；在实木里是上过浆的亚麻布。</p>
+  <figure class="ba"><img src="compare/v4/d2_timber.jpg" alt="实木"><img class="old" src="compare/v4/d2_ink.jpg" alt="墨线"><span class="l">墨线</span><span class="r">实木</span></figure>
+
+  <h2>3. 拆开（左：反写的意大利文；右：点镜子以后）</h2>
+  <p>宽屏上的拆法：立轴留在中间，芦苇杆骨架、铁丝边、布这三层各自挪到立轴旁边，继续在原地转；四根绳子像帐篷一样升到上方；斜撑向四周散开，平台下沉。名字标在每一层的转轴上，所以零件转的时候名字不会跟着晃。</p>
+  <figure class="ba"><img src="compare/v4/d3_apart_mirror.jpg" alt="镜像后"><img class="old" src="compare/v4/d3_apart.jpg" alt="反写"><span class="l">反写</span><span class="r">镜子翻转后</span></figure>
+
+  <h2>4. 点零件看批注</h2>
+  <p>这一条写的是这台机器最有名的毛病：人是踩着平台推杆子的，所以真飞起来的话，平台会朝反方向转。</p>
+  <img class="solo" src="compare/v4/d4_note.jpg" alt="推杆的批注">
+
+  <h2>5. 转得很快的时候（左：正常速度；右：用滚轮或摇柄猛转之后）</h2>
+  <p>这是我自己加的一个小彩蛋，对应他那句“转得够快就会升高”：超过正常速度以后，整台机器慢慢离开地上的影子，同时平台开始反着转（就是上一条批注说的毛病）。慢下来就落回去。不喜欢可以去掉。</p>
+  <figure class="ba"><img src="compare/v4/d5_fast.jpg" alt="猛转"><img class="old" src="compare/v4/d5_slow.jpg" alt="正常"><span class="l">正常速度</span><span class="r">猛转之后</span></figure>
+
+  <h2>6. 手机竖屏</h2>
+  <p>竖屏拆开时换了一种拆法：纸又窄又高，所以芦苇杆留在立轴上，布、铁丝边、绳子依次向上提起，叠成一座塔，正好填满纸面。名字沿左右页边排开。</p>
+  <div class="row">
+    <div><img class="solo narrow" src="compare/v4/p1_open.jpg" alt="手机：打开"></div>
+    <div><img class="solo narrow" src="compare/v4/p2_apart.jpg" alt="手机：拆开"></div>
+    <div><img class="solo narrow" src="compare/v4/p3_note.jpg" alt="手机：批注"></div>
+  </div>
+
+  <h2>7. 手机横屏</h2>
+  <p>这台机器又高又瘦，横屏的纸很矮。我给它加了一条“必须从头到脚都在纸里”的取景规则，只对这台机器生效。</p>
+  <img class="solo land" src="compare/v4/l1_side.jpg" alt="手机横屏">
+
+  <h2>8. 前两页有没有被动到（拖动对比）</h2>
+  <p>没有。第一页唯一的变化是右边那个页签：锁和“next?”去掉了，变成可以点的“III Aerial Screw”（手机上是“III Screw”）。我把页签以下的画面和改之前逐像素比过，扑翼机和自走车的差别都在烛光闪动的正常波动之内。</p>
+  <figure class="ba"><img src="compare/v4/t1_new.jpg" alt="现在"><img class="old" src="compare/v4/t1_old.jpg" alt="之前"><span class="l">之前</span><span class="r">现在</span></figure>
+  <p></p>
+  <figure class="ba narrow"><img src="compare/v4/t2_new.jpg" alt="现在"><img class="old" src="compare/v4/t2_old.jpg" alt="之前"><span class="l">之前</span><span class="r">现在</span></figure>
+
+  <div class="tip"><b>我没法替你确认的：</b>
+    <ul>
+      <li>声音：螺旋每转一圈有一声布扫过空气的声音，每半圈有一声木头吱呀声。和其他声音一样，只确认了不报错，没有人听过。</li>
+      <li>文字：标题上方那句和右边四行反写字，是达芬奇在这一页上写的原话（出处是意大利语维基百科“Vite aerea”条目的引文，没有对照手稿原件）。纸背透过来的字、零件的意大利文名字是我凭记忆写的，没有核对。</li>
+      <li>平台、斜撑、推杆、四个人推着走，都是后人的复原方式；他的草图和笔记里没有画人，也没说靠什么驱动。批注里已经照实写了。</li>
+      <li>真手机和 Safari 仍然没有测过。</li>
+    </ul>
+  </div>
+</main>
+<script>
+  document.querySelectorAll('.ba').forEach(function (f) {
+    function set(ev) { var r = f.getBoundingClientRect(); f.style.setProperty('--p', Math.max(0, Math.min(100, (ev.clientX - r.left) / r.width * 100)) + '%'); }
+    var down = false;
+    f.addEventListener('pointerdown', function (ev) { down = true; f.setPointerCapture(ev.pointerId); set(ev); });
+    f.addEventListener('pointermove', function (ev) { if (down) set(ev); });
+    f.addEventListener('pointerup', function () { down = false; });
+    f.addEventListener('pointercancel', function () { down = false; });
+  });
+</script>
+</body>
+</html>

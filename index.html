@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Da Vinci's Living Codex</title>
-<meta name="description" content="Leonardo da Vinci's ornithopter and self-propelled cart, drawn in ink and rebuilt in timber: a 3D notebook page you can crank, pull apart and read with a mirror.">
+<meta name="description" content="Leonardo da Vinci's ornithopter, self-propelled cart and aerial screw, drawn in ink and rebuilt in timber: 3D notebook pages you can crank, pull apart and read with a mirror.">
 <meta name="theme-color" content="#17100a">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Da Vinci's Living Codex">
@@ -105,14 +105,6 @@
   #note p { margin: 0 0 0.3em; }
   #note .w { opacity: 0; transition: opacity 0.22s; }
   #note.on .w { opacity: 1; }
-
-  #toast {
-    position: absolute; left: 50%; top: calc(var(--st) + var(--s) * 9); transform: translate(-50%, 0) rotate(-1deg);
-    color: var(--ink); font-size: calc(var(--s) * 2.3); font-style: italic; text-align: center; width: min(40%, 460px);
-    text-shadow: 0 0 10px rgba(236, 222, 193, 1), 0 0 4px rgba(236, 222, 193, 1), 0 0 2px rgba(236, 222, 193, 1);
-    opacity: 0; transition: opacity 0.35s; pointer-events: none; z-index: 4;
-  }
-  #toast.on { opacity: 1; }
 
   /* The leaf that sweeps across when you turn to another machine */
   #turn {
@@ -227,9 +219,6 @@
   }
   #tabs button small { opacity: 0.65; margin-right: 6px; }
   #tabs button[aria-pressed="true"] { height: 34px; color: var(--ink); background: linear-gradient(180deg, #f1e6ca, #e7d8b6); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 -3px 8px rgba(0, 0, 0, 0.4); }
-  #tabs button.locked { background: linear-gradient(180deg, #9d8a68, #86734f); color: #3e2c16; }
-  #tabs button.locked svg { width: 10px; height: 12px; margin-right: 5px; vertical-align: -1px; }
-  #tabs button.locked em { font-family: var(--body); font-size: 12px; opacity: 0.8; margin-left: 6px; letter-spacing: 0; }
 
   #tools { position: fixed; right: 16px; top: 0; height: 36px; display: flex; gap: 18px; align-items: center; font-size: 14px; font-style: italic; color: rgba(233, 220, 192, 0.72); }
   #tools button { padding: 6px 0; border-bottom: 1px dotted rgba(233, 220, 192, 0.35); }
@@ -346,11 +335,9 @@
 
   @media (max-width: 700px) {
     #tabs button { font-size: 12px; padding: 5px 9px 6px; }
-    #tabs button.locked em, .lg { display: none; }
-    #tabs button.locked small { margin-right: 0; }
+    .lg { display: none; }
     #tools { font-size: 13px; gap: 12px; right: 10px; }
     #hintLens { display: none; }
-    #toast { width: 78%; top: calc(var(--st) + var(--s) * 30); }
   }
   /* Small screens (a phone either way up): the same objects, sized for a thumb, with the rule taking whatever width is left */
   body.compact #bench { padding: 18px 12px 8px; gap: 12px; }
@@ -404,7 +391,6 @@
     <svg width="40" height="22" viewBox="0 0 40 22"><path d="M2 14 C12 20, 26 18, 37 6 M37 6 l-6 1.5 M37 6 l-1 6"/></svg></div>
   <div id="hintPick" class="hint wb-only">tap any part<br>to read about it
     <svg width="34" height="30" viewBox="0 0 34 30"><path d="M3 28 C4 16, 14 7, 30 4 M30 4 l-6 -1.5 M30 4 l-4 5"/></svg></div>
-  <div id="toast" role="status"></div>
   <div class="caption" id="cap"></div>
   <div id="turn"></div>
 </div>
@@ -412,7 +398,7 @@
 <nav id="tabs" class="ui" aria-label="Machines">
   <button type="button" data-m="orni" aria-pressed="true"><small>I</small>Ornithopter</button>
   <button type="button" data-m="cart" aria-pressed="false"><small>II</small><span class="lg">Self-Propelled </span>Cart</button>
-  <button type="button" id="vote" class="locked"><svg viewBox="0 0 12 14"><path d="M2.6 6V4.3a3.4 3.4 0 0 1 6.8 0V6" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="1.2" y="6" width="9.6" height="7" rx="1" fill="currentColor"/></svg><small>III</small><span class="lg">Aerial Screw</span><em>next?</em></button>
+  <button type="button" data-m="screw" aria-pressed="false"><small>III</small><span class="lg">Aerial </span>Screw</button>
 </nav>
 <div id="tools" class="ui">
   <button type="button" id="sndBtn" aria-pressed="false">Sound: off</button>
@@ -472,7 +458,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 const $ = (id) => document.getElementById(id);
-const stage = $('stage'), glCanvas = $('gl'), ov = $('ov'), capEl = $('cap'), noteEl = $('note'), toastEl = $('toast');
+const stage = $('stage'), glCanvas = $('gl'), ov = $('ov'), capEl = $('cap'), noteEl = $('note');
 const octx = ov.getContext('2d');
 
 const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, preserveDrawingBuffer: true });
@@ -743,14 +729,16 @@ function makeSurface(hex, metal, dimU, glowU) {
     toneMapped: false,
   });
 }
-// Wing cloth: a faint wash in ink mode, translucent raw linen with weave, back-light and a warm rim in timber mode
-function makeSail(dimU, glowU) {
+// Wing cloth: a faint wash in ink mode, translucent raw linen with weave, back-light and a warm rim in timber mode.
+// `solid` is the starched cloth of the screw: it winds round behind itself, so it hides what lies behind it like any other part.
+function makeSail(dimU, glowU, solid) {
   return new THREE.ShaderMaterial({
     uniforms: partUniforms(dimU, glowU),
     vertexShader: VERT,
     fragmentShader: PART_GLSL + /* glsl */`
       varying vec3 vN; varying vec3 vObj; varying vec3 vView; varying vec2 vUv;
       void main(){
+        ${solid ? 'dimDiscard();' : ''}
         float xs = splitCoord(), sol = solMaskAt(xs);
         vec3 N = normalize(vN);
         if (!gl_FrontFacing) N = -N;
@@ -772,24 +760,25 @@ function makeSail(dimU, glowU) {
         vec3 linen = vec3(0.96, 0.88, 0.71)*(0.78 + 0.26*cloth)*(0.90 + 0.14*weave)*(1.0 - 0.20*ten)*(1.0 - 0.10*vUv.y);
         float rim = pow(1.0 - abs(dot(N, V)), 2.2);
         vec3 warm = vec3(1.0, 0.74, 0.45);
-        vec3 so = linen*lam + warm*(0.30*rim + 0.26*trans);
+        vec3 so = linen*lam${solid ? '*vec3(0.93, 0.88, 0.78)' : ''} + warm*(0.30*rim + 0.26*trans);
         so *= mix(vec3(1.0), clamp(pap/vec3(0.925, 0.868, 0.752), 0.72, 1.08), 0.4);
-        float a = mix(0.55, 0.93 + 0.07*rim, sol) * (1.0 - 0.9*uDim);
+        float a = mix(0.55, 0.93 + 0.07*rim, sol) * ${solid ? '1.0' : '(1.0 - 0.9*uDim)'};
         vec3 col = mix(sk, so, sol) * mix(vec3(1.0), vec3(1.0, 0.88, 0.80), uGlow);
         col = mix(col, ink*1.15, 0.30*wetEdge(xs));
         gl_FragColor = vec4(col, a);
       }`,
-    transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false,
+    transparent: true, depthWrite: !!solid, side: THREE.DoubleSide, toneMapped: false,
+    ...(solid ? { polygonOffset: true, polygonOffsetFactor: 1.5, polygonOffsetUnits: 2 } : {}),
   });
 }
 const MATDEF = {
   wood: ['#cf9f66', 0], dark: ['#9e6a3f', 0], pale: ['#dcb47c', 0], walnut: ['#7d5231', 0], rope: ['#c2a878', 0],
-  brass: ['#c49a4c', 1], iron: ['#6f665a', 0.5], linen: 'sail',
+  brass: ['#c49a4c', 1], iron: ['#6f665a', 0.5], linen: 'sail', cloth: 'starched',
 };
 function partMats(dimU, glowU) {
   const cache = {}, o = {};
   Object.keys(MATDEF).forEach((k) => Object.defineProperty(o, k, {
-    get() { return cache[k] || (cache[k] = MATDEF[k] === 'sail' ? makeSail(dimU, glowU) : makeSurface(MATDEF[k][0], MATDEF[k][1], dimU, glowU)); },
+    get() { const d = MATDEF[k]; return cache[k] || (cache[k] = typeof d === 'string' ? makeSail(dimU, glowU, d === 'starched') : makeSurface(d[0], d[1], dimU, glowU)); },
   }));
   return o;
 }
@@ -1379,6 +1368,145 @@ function cartKin(mc, S) {
     p.kQuat.setFromEuler(eul);
   });
 }
+/* ====================================================================================
+   MACHINE III — The Aerial Screw
+   The shaft stands on the y axis. The cloth is a helicoid wound on a cone: every point of its rim lies on a straight line
+   from the mast-head, so a stay cord run down that line touches the wire at each turn.
+   ==================================================================================== */
+const SC_Y0 = 1.55, SC_Y1 = 3.1, SC_TOP = 3.55, SC_R = 1.75, SC_TH = 2 * TAU, SC_CANES = 24;   // two turns, a cane every 30°
+const SC_STEP = SC_TH / SC_CANES, SC_PITCH = (SC_Y1 - SC_Y0) / 2;
+const scY = (th) => SC_Y0 + (SC_Y1 - SC_Y0) * th / SC_TH;
+const scR = (th) => SC_R * (SC_TOP - scY(th)) / (SC_TOP - SC_Y0);
+const scP = (th, r, dy = 0) => [Math.cos(th) * r, scY(th) + dy, Math.sin(th) * r];
+// Cloth between canes j0…j1: one panel per pair of canes, hanging a little slack between them
+function helicoid(B, pivot, j0, j1) {
+  const NU = 5, NV = 6, pos = [], uv = [], idx = [];
+  for (let j = j0; j < j1; j++) {
+    const o = pos.length / 3;
+    for (let b = 0; b <= NV; b++) for (let a = 0; a <= NU; a++) {
+      const u = a / NU, v = b / NV, th = (j + u) * SC_STEP, R = scR(th), r = lerp(0.05, R, v);
+      const slack = 0.045 * 4 * u * (1 - u) * Math.sin(Math.PI * v) * (R / SC_R);
+      pos.push(Math.cos(th) * r - pivot[0], scY(th) - slack - pivot[1], Math.sin(th) * r - pivot[2]); uv.push(j + u, v);
+    }
+    for (let b = 0; b < NV; b++) for (let a = 0; a < NU; a++) {
+      const p = o + b * (NU + 1) + a, q = p + 1, c = p + NU + 1, d = c + 1;
+      idx.push(p, q, c, q, d, c);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx); g.computeVertexNormals();
+  const m = new THREE.Mesh(g, M.cloth); m.renderOrder = 1; m.userData.keep = true;
+  B.meshes.push(m);
+}
+function screwDefs() {
+  const D = [], dirOf = (a) => [Math.cos(a), 0, Math.sin(a)];
+  D.push({ id: 'deck', sys: 'platform', pivot: [0, 0.12, 0], explode: [0, -0.9, 0], tilt: 0,
+    it: 'tavolato', itSub: 'tondo, di rovere', en: 'platform', enSub: 'a round oak deck', anchor: [-0.95, 0.09, 0.55],
+    build(B) {
+      B.ring([0, 0.15, 0], 'y', 1.2, 1.02, 0.14, M.wood);
+      B.disk([0, 0.17, 0], 'y', 1.03, 0.05, 48, M.pale);
+      for (let x = -0.9; x < 0.95; x += 0.2) { const z = Math.sqrt(1.02 * 1.02 - x * x); B.line([[x, 0.197, -z], [x, 0.197, z]]); }   // plank seams
+      [0.5, 0.5 + Math.PI / 2].forEach((a) => {                                 // two sleepers crossed under the deck
+        const d = dirOf(a);
+        B.beam([-1.3 * d[0], 0.06, -1.3 * d[2]], [1.3 * d[0], 0.06, 1.3 * d[2]], 0.13, 0.11, M.dark);
+        [1.11, -1.11].forEach((t) => { B.disk([t * d[0], 0.228, t * d[2]], 'y', 0.02, 0.02, 6, M.dark); });
+      });
+      B.disk([0, 0.2, 0], 'y', 0.15, 0.05, 16, M.dark);                         // the step the shaft turns in
+      B.ring([0, 0.225, 0], 'y', 0.13, 0.062, 0.03, M.iron, 20);
+      B.rivets([0, 0.225, 0], 'y', 0.098, 6, 0.012, M.iron, 0.011);
+    } });
+  for (let i = 0; i < 4; i++) {
+    const a = Math.PI / 4 + i * Math.PI / 2, d = dirOf(a), F = [1.08 * d[0], 0.22, 1.08 * d[2]], H = [0.14 * d[0], 1.42, 0.14 * d[2]];
+    D.push({ id: 'strut' + i, sys: 'frame', pivot: [0.61 * d[0], 0.82, 0.61 * d[2]], explode: [0.85 * d[0], -0.3, 0.85 * d[2]], explodeTall: [0.5 * d[0], -0.35, 0.5 * d[2]],
+      ...(i === 0 ? { it: 'puntelli', itSub: 'tengono ritto l albero', en: 'struts', enSub: 'hold the shaft upright', anchor: [0, 0, 0] } : {}),
+      build(B) {
+        B.beam(F, H, 0.075, 0.075, M.wood);
+        B.disk([F[0], 0.235, F[2]], 'y', 0.085, 0.03, 8, M.iron);                // iron shoe on the deck
+        B.lash([0.27 * d[0], 1.252, 0.27 * d[2]], [-0.94 * d[0], 1.2, -0.94 * d[2]], 0.058, 0.09);
+      } });
+  }
+  D.push({ id: 'collar', sys: 'frame', pivot: [0, 1.42, 0], explode: [0, -0.25, 0], tilt: 0,
+    build(B) {
+      B.ring([0, 1.42, 0], 'y', 0.17, 0.062, 0.11, M.dark, 20);
+      B.ring([0, 1.42, 0], 'y', 0.186, 0.168, 0.05, M.iron, 20);
+      B.rivets([0, 1.42, 0], 'y', 0.115, 4, 0.056, M.iron, 0.012);
+    } });
+  D.push({ id: 'shaft', sys: 'mast', pivot: [0, 1.9, 0], explode: [0, 0, 0], tilt: 0, rot: true, side: -1,
+    it: 'albero', itSub: 'ritto nel mezzo', en: 'shaft', enSub: 'one pole carries all', anchor: [0, -0.95, 0], clear: 0.3,
+    build(B) {
+      B.cyl([0, 0.2, 0], [0, 3.62, 0], 0.055, 8, M.dark);
+      B.disk([0, 0.27, 0], 'y', 0.072, 0.07, 12, M.iron);                       // iron shoe
+      B.disk([0, 3.62, 0], 'y', 0.07, 0.045, 12, M.brass);
+      B.taper([0, 3.64, 0], [0, 3.78, 0], 0.042, 0.012, 8, M.brass);
+    } });
+  D.push({ id: 'bars', sys: 'capstan', pivot: [0, 0.66, 0], explode: [0, -0.3, 0], tilt: 0, rot: true, side: 1,
+    it: 'stanghe', itSub: 'spinte in giro', en: 'push bars', enSub: 'walked round the shaft', anchor: [0, 0, 0], clear: 0.72,
+    build(B) {
+      B.disk([0, 0.66, 0], 'y', 0.12, 0.2, 12, M.dark);
+      [0.575, 0.745].forEach((y) => B.ring([0, y, 0], 'y', 0.128, 0.06, 0.03, M.iron, 20));
+      [[0.3, 0.63], [0.3 + Math.PI / 2, 0.69]].forEach(([a, y]) => {           // two bars through the hub, one over the other
+        const d = dirOf(a), at = (t) => [t * d[0], y, t * d[2]];
+        B.beam(at(-0.66), at(0.66), 0.05, 0.05, M.wood);
+        [1, -1].forEach((s) => { B.cyl(at(s * 0.5), at(s * 0.67), 0.034, 8, M.rope); B.disk([s * 0.16 * d[0], y + 0.03, s * 0.16 * d[2]], 'y', 0.014, 0.02, 6, M.iron); });
+      });
+    } });
+  // The screw itself, in three layers: the canes, the wire along their tips, and the cloth laid over them.
+  // Pulled apart on a wide sheet, each layer is set down on its own beside the shaft and goes on turning there;
+  // on a tall sheet (explodeTall) the canes stay on the shaft and the cloth, the wire and the cords are lifted off above it, one over the other.
+  const PY = (SC_Y0 + SC_Y1) / 2, out = (deg, r, y) => { const a = deg * Math.PI / 180; return [r * Math.cos(a), y, r * Math.sin(a)]; };
+  D.push({ id: 'canes', sys: 'canes', pivot: [0, PY, 0], explode: out(125, 2.1, 0.45), explodeTall: [0, 0, 0], tilt: 0, rot: true, tallSide: 1,
+    it: 'canne', itSub: 'lunghe e grosse', en: 'cane ribs', enSub: 'long and stout', anchor: [0, -0.3, 0], clear: SC_R * 0.95,
+    build(B) {
+      for (let j = 0; j <= SC_CANES; j++) {
+        const th = j * SC_STEP, R = scR(th), edge = j === 0 || j === SC_CANES;   // the two end canes are booms: they carry the free edges of the cloth
+        B.taper(scP(th, 0.04), scP(th, R + 0.035), edge ? 0.032 : 0.024, edge ? 0.02 : 0.013, 5, edge ? M.dark : M.pale);
+        B.lash(scP(th, R - 0.03), dirOf(th), edge ? 0.028 : 0.021, 0.05);
+      }
+      const bind = [];                                                          // the cord that binds their butts to the shaft
+      for (let n = 0; n <= 150; n++) { const th = (n / 150) * SC_TH; bind.push([Math.cos(th * 5) * 0.06, scY(th) + 0.02, Math.sin(th * 5) * 0.06]); }
+      B.line(bind);
+    } });
+  D.push({ id: 'rim', sys: 'rim', pivot: [0, PY, 0], explode: out(245, 2.1, 0.45), explodeTall: [0, 2.6, 0], tilt: 0, rot: true, tallSide: 1,
+    it: 'filo di ferro', itSub: 'grosso una corda', en: 'iron wire rim', enSub: 'as thick as a cord', anchor: [0, SC_Y1 + 0.16 - PY, 0], clear: SC_R * 0.5,
+    build(B) {
+      const pts = [];
+      for (let n = 0; n <= 96; n++) { const th = (n / 96) * SC_TH; pts.push(scP(th, scR(th) + 0.012)); }
+      for (let n = 1; n <= 10; n++) {                                           // at the top the wire turns in and is made fast to the shaft
+        const u = n / 10, th = SC_TH + u * 0.8 * Math.PI, r = lerp(scR(SC_TH) + 0.012, 0.066, u);
+        pts.push([Math.cos(th) * r, SC_Y1 + 0.16 * u, Math.sin(th) * r]);
+      }
+      B.tube(pts, 0.016, M.iron, 280);
+    } });
+  D.push({ id: 'sail', sys: 'sail', pivot: [0, PY, 0], explode: out(5, 2.1, 0.45), explodeTall: [0, 2.05, 0], tilt: 0, rot: true, tallSide: -1,
+    it: 'tela lina', itSub: 'stopata con amido', en: 'linen screw', enSub: 'pores stopped with starch', anchor: [0, -0.3, 0], clear: SC_R * 0.95,
+    build(B) { helicoid(B, [0, PY, 0], 0, SC_CANES); } });
+  D.push({ id: 'stays', sys: 'stays', pivot: [0, SC_TOP, 0], explode: [0, 2.3, 0], explodeTall: [0, 3.15, 0], tilt: 0, rot: true, side: -1,
+    it: 'sartie', itSub: 'dalla cima al cerchio', en: 'stay cords', enSub: 'mast-head to rim', anchor: [0, 0, 0], clear: 0.45,
+    build(B) {
+      B.ring([0, SC_TOP, 0], 'y', 0.09, 0.058, 0.03, M.iron, 20);
+      for (let i = 0; i < 4; i++) {
+        const th = (1 + 3 * i) * SC_STEP, d = dirOf(th), foot = scP(th, scR(th) + 0.03), up = scP(th + TAU, scR(th + TAU) + 0.03);
+        const run = [foot[0] - 0.08 * d[0], foot[1] - SC_TOP, foot[2] - 0.08 * d[2]];
+        B.cyl([0.08 * d[0], SC_TOP, 0.08 * d[2]], foot, 0.009, 5, M.rope);
+        [foot, up].forEach((p) => B.lash(p, run, 0.02, 0.045));               // tied off where it crosses the wire, on a cane tip
+      }
+    } });
+  return D;
+}
+// The screw turns once for each turn of the crank. Spun hard it lifts off its shadow — and the deck, with nothing to hold it, creeps round the other way.
+const tQ2 = new THREE.Quaternion();
+function screwKin(mc, S) {
+  const yaw = S.yaw || 0;
+  tQ.setFromAxisAngle(AY, -S.phase); tQ2.setFromAxisAngle(AY, yaw);
+  mc.parts.forEach((p) => {
+    p.off.fromArray((S.tall && p.explodeTall) || p.explode);
+    if (p.rot) p.kQuat.copy(tQ);
+    else { p.kQuat.copy(tQ2); p.kPos.applyQuaternion(tQ2); p.off.applyQuaternion(tQ2); }
+  });
+  mc.root.position.y = 0.34 * (S.lift || 0);
+}
 
 /* ---------- Build a machine: meshes + ink edges with reveal timing ---------- */
 const STAGGER = 0.17;
@@ -1473,6 +1601,7 @@ function buildMachine(spec) {
     MAXT: Math.max(...parts.map((p) => p.end)) + 0.01,
     fitA: { c: new THREE.Vector3(), r: 1, raw: 1 }, fitE: { c: new THREE.Vector3(), r: 1, raw: 1 } };
   root.visible = true;
+  if (parts.some((p) => p.explodeTall)) { mc.fitT = { c: new THREE.Vector3(), r: 1, raw: 1 }; measure(mc, 1, mc.fitT, true); }   // a second way of pulling it apart, for a tall sheet
   measure(mc, 0, mc.fitA); measure(mc, 1, mc.fitE);
   root.visible = false;
   return mc;
@@ -1491,12 +1620,12 @@ function pose(mc, S) {
   });
   mc.root.updateMatrixWorld(true);
 }
-function measure(mc, e, out) {
-  pose(mc, { phase: 0, run: 0, e });
+function measure(mc, e, out, tall) {
+  pose(mc, { phase: 0, run: 0, e, tall });
   const box = new THREE.Box3();
   mc.parts.forEach((p) => box.expandByObject(p.surf, true));
   const s = box.getBoundingSphere(new THREE.Sphere());
-  out.c.copy(s.center); out.raw = s.radius; out.r = s.radius * (e > 0.5 ? mc.fitK[1] : mc.fitK[0]);
+  out.c.copy(s.center); out.raw = s.radius; out.r = s.radius * mc.fitK[tall ? 2 : e > 0.5 ? 1 : 0]; out.hy = (box.max.y - box.min.y) / 2;
 }
 /* ---------- Content: titles, mirror-script notes, inspection notes ---------- */
 const MACHINES = {
@@ -1554,8 +1683,34 @@ const MACHINES = {
       gantry: ['GANTRY', 'castello', 'A light timber frame holds the upright shafts true above the gears.', 'Without it the crown gears would wander out of mesh.'],
     },
   }),
+  screw: buildMachine({
+    id: 'screw', seed: 23, defs: screwDefs(), kin: screwKin, fitK: [0.90, 0.78, 0.86], storyK: 6.3, az0: 0.62, spill: 1.0, upright: true,
+    folio: '83', paperSeed: 27.3, groundY: -0.01, groundDrop: 1.3, shadowBlur: 0.035, shadowK: 0.95,
+    verso: ['sia lo stremo di fuori della vite', 'di filo di ferro grosso una corda', 'e dal cerchio al centro braccia otto', 'l armadura di canne lunghe e grosse',
+      'fanne un picciolo modello di carta', 'lo stile di sottile piastra di ferro', 'torta per forza, e nel tornare', 'in libertà farà voltare la vite'],
+    name: 'The Aerial Screw', sub: 'Leonardo da Vinci · Paris Manuscript B, f. 83v · c. 1489',
+    mirrorIt: 'detta vite si fa la femmina nell aria', mirrorEn: 'the screw cuts its own thread in the air',
+    notesIt: ['trovo, se questo strumento a vite sarà ben fatto', 'di tela lina, stopata i suoi pori con amido', 'e svoltata con prestezza', 'monterà in alto'],
+    notesEn: ['I find that if this screw is well made', 'of linen, its pores stopped up with starch', 'and turned swiftly', 'it will rise high'],
+    story: [
+      ['Sketched by Leonardo, around 1489', 'PARIS MANUSCRIPT B · FOLIO 83 VERSO'],
+      ['Built from the drawing', 'CANE · LINEN · IRON WIRE'],
+      ['Twelve parts, exploded', 'HE DREW EXPLODED VIEWS 500 YEARS AGO'],
+      ['A screw to bore up into the air', 'PUSH BARS → SHAFT → LINEN SCREW'],
+    ],
+    sys: {
+      sail: ['LINEN SCREW', 'tela lina', 'Linen with its pores stopped up with starch, so that the air cannot slip through it.', 'Leonardo held that air has body: turned fast enough, a screw should bite into it as a screw bites into wood.'],
+      canes: ['CANE RIBS', 'canne', 'Long, stout canes fan out from the shaft like the steps of a winding stair.', 'Cane is the lightest stiff thing he had; the cloth is laid over it and tied at every tip.'],
+      rim: ['IRON WIRE RIM', 'filo di ferro', 'The outer edge is iron wire "as thick as a cord", eight braccia from rim to centre: nearly five metres.', 'It keeps the cloth taut along the whole spiral.'],
+      stays: ['STAY CORDS', 'sartie', 'Cords run from the mast-head down to the wire, as shrouds hold up a ship\'s mast.', 'They lie along the cone of the screw, so each one can be tied to every turn it passes.'],
+      mast: ['SHAFT', 'albero', 'One upright pole carries everything that turns: the bars below, the screw above.', 'Its foot stands in a step on the deck and a collar steadies it half-way up.'],
+      capstan: ['PUSH BARS', 'stanghe', 'Bars through the shaft, like a ship\'s capstan, for men to walk round. The crew is a later reading: his note names no one.', 'The flaw: the men push against the deck, so in the air the deck would turn one way and the screw the other.'],
+      frame: ['STRUTS & COLLAR', 'puntelli', 'Four slanting struts meet in a collar that keeps the long shaft upright.', 'The men work inside this cage, between the struts and the shaft.'],
+      platform: ['PLATFORM', 'tavolato', 'A round timber deck: the only fixed part, and the floor the crew stands on.', 'It was never built. He did suggest a small paper model, turned by a spring.'],
+    },
+  }),
 };
-const allParts = [...MACHINES.orni.parts, ...MACHINES.cart.parts];
+const allParts = Object.values(MACHINES).flatMap((m) => m.parts);
 let mc = MACHINES.orni;
 /* ---------- Procedural audio: no files, everything synthesised from noise and oscillators ---------- */
 const Snd = (() => {
@@ -1630,6 +1785,8 @@ const Snd = (() => {
   // cart: clockwork escapement
   api.tick = (tock) => { if (!ok('tick', 0.04)) return; burst(white, 'bandpass', tock ? 1700 : 2500, 14, 0.035, 0.34, 0.001); tone('square', tock ? 820 : 1240, tock ? 600 : 900, 0.014, 0.04); };
   api.tooth = () => { if (!ok('tooth', 0.03)) return; burst(white, 'bandpass', 3400, 10, 0.015, 0.07, 0.001); };
+  // screw: the shaft working in its collar as a bar comes round
+  api.creak = () => { if (!ok('creak', 0.12)) return; const f = R(300, 430); burst(pink, 'bandpass', [[f, 0], [f * R(1.25, 1.5), 0.1], [f * 0.9, 0.22]], 11, 0.24, 0.15, 0.04); };
   // the desk: brass on brass, a leaf turning, glass lifted, the divider dragged across paper, the machine bursting apart
   api.brass = (k = 1) => { if (!ok('brass', 0.03)) return; burst(white, 'bandpass', R(3800, 4600), 16, 0.05, 0.12 * k, 0.001); tone('sine', R(2050, 2250), 1900, 0.09, 0.05 * k); tone('sine', R(3300, 3500), 3200, 0.06, 0.025 * k); };
   api.page = () => { if (!ok('page', 0.3)) return; burst(pink, 'bandpass', [[900, 0], [2600, 0.22], [1200, 0.5]], 0.7, 0.55, 0.5, 0.08); burst(white, 'highpass', 3500, 0.5, 0.35, 0.06, 0.1); };
@@ -1738,6 +1895,7 @@ const wb = {
   sel: null, selPart: null, focus: null, dim: 0, space: false, dragCrank: false,
   tgt: new THREE.Vector3(), dist: 0, camInit: false,
   peekT: reduceMotion ? null : 0, splitOff: 0, hoverSplit: false, atLo: false, atHi: false, idle: false, lit: 1,
+  lift: 0, yaw: 0,   // the screw, driven well past its working speed: how far it has risen, how far the deck has crept round
 };
 const done = {};       // things the visitor has already tried, so their prompts stay away
 let maker = false;     // maker tools (recording drawer, speed plaque, style plate) — only with #maker=1
@@ -1753,6 +1911,15 @@ const page = { w: 1, h: 1, l: 0, t: 0, sx: 0, st: 0, sb: 0, bh: 0, full: true, t
 
 /* ---------- Camera ---------- */
 const camTgt = new THREE.Vector3(), LOOK = new THREE.Vector3(0.15, 1.8, 0);
+const fitX = (m) => (page.portrait && m.fitT) || m.fitE;   // how big the machine is when pulled apart, on this shape of sheet
+// Camera distance for a machine pulled apart by eG. An upright machine (the screw) must also stand between the head and the foot of the sheet,
+// however squat the sheet is: the round fit alone would let its top and its deck run off a phone held sideways.
+function distFor(m, eG, el, spill) {
+  const fe = fitX(m), d = baseDist(lerp(m.fitA.r, fe.r, eG), spill);
+  if (!m.upright) return d;
+  const free = page.full ? (page.h - page.st - page.sb - page.bh) / page.h : 1, hy = lerp(m.fitA.hy, fe.hy, eG);
+  return Math.max(d, 1.09 * (hy * Math.cos(el) + 1.2 * Math.abs(Math.sin(el))) / (Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2) * free));
+}
 function baseDist(R, spill = 1.3) {
   const vf = THREE.MathUtils.degToRad(camera.fov) / 2, hf = Math.atan(Math.tan(vf) * camera.aspect);
   return R / Math.sin(Math.min(vf, hf * (camera.aspect < 1 ? spill : 1))); // portrait: let the wingtips run off the page a little
@@ -1862,20 +2029,37 @@ const toScreen = (v, w, h) => { v.project(camera); v.x = (v.x * 0.5 + 0.5) * w; 
 
 // Air made visible, the way he drew water: curling strokes shed from each wingtip at the fastest point of the downstroke.
 // Everything is a pure function of the crank angle, so it scrubs and loops like the machine itself.
-const PH_SHED = Math.PI + 0.75, SX = new Float32Array(64), SY = new Float32Array(64);
-function strokeStrand(n, alpha, lw) {
+const PH_SHED = Math.PI + 0.75, SX = new Float32Array(64), SY = new Float32Array(64), SA = new Float32Array(64);
+function strokeStrand(n, alpha, lw, fade) {
   octx.lineCap = 'round';
   for (let i = 1; i < n; i++) {
     const u = i / (n - 1);
-    octx.strokeStyle = INKC + (alpha * (1 - 0.55 * u)).toFixed(3) + ')';
+    octx.strokeStyle = INKC + (alpha * (1 - 0.55 * u) * (fade ? fade[i] : 1)).toFixed(3) + ')';
     octx.lineWidth = lw * (1.45 - 0.95 * u);
     octx.beginPath(); octx.moveTo(SX[i - 1], SY[i - 1]); octx.lineTo(SX[i], SY[i]); octx.stroke();
   }
 }
+// The screw "makes its female in the air": the thread it leaves behind, drawn as the low edge of the cloth comes round.
+// Each stroke stays where the edge passed and sinks away, so the thread seems to wind down out of the screw.
+function paintThread(S, w, h, lw, k) {
+  const N = 60, cx = camera.position.x, cz = camera.position.z, cl = Math.hypot(cx, cz) || 1;
+  for (let i = 0; i < 3; i++) {
+    const r0 = SC_R * (1.0 - 0.3 * i) + 0.03, span = TAU * (1.15 - 0.2 * i);
+    for (let q = 0; q < N; q++) {
+      const u = q / (N - 1), th = S.phase - 0.12 - u * span, r = r0 * (1 - 0.07 * u) + u * (0.05 * Math.sin(3 * th + i * 2.1) + 0.025 * Math.sin(7 * th + i));
+      tmp.set(Math.cos(th) * r, SC_Y0 - 0.03 - (SC_PITCH / TAU) * u * span * (1 + 0.25 * u) + u * (0.04 * Math.sin(2 * th + i) + 0.02 * Math.sin(5 * th + 1.7 * i)), Math.sin(th) * r);
+      SA[q] = 0.3 + 0.7 * ss(-0.35, 0.25, (tmp.x * cx + tmp.z * cz) / (cl * r));   // fainter where it passes behind the machine
+      toScreen(mc.root.localToWorld(tmp), w, h);
+      SX[q] = tmp.x; SY[q] = tmp.y;
+    }
+    strokeStrand(N, k * (0.62 - 0.14 * i), lw * (1.2 - 0.12 * i), SA);
+  }
+}
 function paintAir(S, w, h, lw) {
-  if (mc.id !== 'orni' || S.reveal <= mc.MAXT) return;
+  if (mc.id === 'cart' || S.reveal <= mc.MAXT) return;
   const k = (S.flow || 0) * (1 - clamp(S.e * 5)) * (1 - 0.85 * S.dim);
   if (k < 0.02) return;
+  if (mc.id === 'screw') { paintThread(S, w, h, lw, k); return; }
   const beat = (S.phase - PH_SHED) / TAU, kb = Math.floor(beat), N = 56;
   for (let j = 0; j < 2; j++) {
     const age = beat - (kb - j);
@@ -1965,17 +2149,23 @@ function paint(S, mOf) {
     let dx = x - cx, dy = y - cy; const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
     // a callout goes outward from the middle, unless the sheet ends first: then it turns inward, or its leader is cut short
     if (p.twS !== s) { octx.font = `italic ${2.5 * s}px ${FONT_B}`; p.tw = Math.max(octx.measureText(p.it).width, octx.measureText(p.en).width, octx.measureText(p.enSub).width * 0.8); p.twS = s; }
-    const pad = page.sx * dpr + 1.4 * s, need = 7.8 * s + p.tw, roomR = w - pad - x, roomL = x - pad;
-    let right = (dx || 1) >= 0;
+    let clearPx = 0;
+    if (p.clear) clearPx = Math.abs(toScreen(tmp2.setFromMatrixColumn(camera.matrixWorld, 0).multiplyScalar(p.clear).add(p.group.localToWorld(P0.copy(p.anchorV))), w, h).x - x) + 1.2 * s;
+    const pad = page.sx * dpr + 1.4 * s, need = Math.max(7.8 * s, clearPx + 0.8 * s) + p.tw, roomR = w - pad - x, roomL = x - pad;
+    // a part that turns is named from a point on its axis, which stays still: its leader is long enough for the name to stand clear
+    // of whatever sweeps round that point (clear), and on the shaft itself, in the middle of the sheet, it is told which side to write on (side)
+    let right = p.side ? p.side > 0 : (dx || 1) >= 0;
     if (right && need > roomR && roomL > roomR) right = false; else if (!right && need > roomL && roomR > roomL) right = true;
-    const reach = clamp((right ? roomR : roomL) - 0.8 * s - p.tw, 1.6 * s, 7 * s);
-    items.push({ p, i, a, x, y, right, lx: x + (right ? 1 : -1) * reach, ly: y + dy * 2.5 * s });
+    const room = (right ? roomR : roomL) - 0.8 * s - p.tw;
+    let reach = clamp(room, 1.6 * s, 7 * s);
+    if (p.clear) reach = Math.max(reach, Math.min(clearPx, room));
+    items.push({ p, i, a, x, y, right, lx: x + (right ? 1 : -1) * reach, ly: p.clear ? y : y + dy * 2.5 * s });
   });
   // a tall sheet is too narrow to label parts where they hang: the names go in two columns down the margins, as in a printed plate
   const tall = page.portrait, top = page.st * dpr + 17 * s, foot = (page.h - page.sb) * dpr - 5 * s;
   if (tall) {
     const padM = page.sx * dpr + 3.2 * s, half = Math.ceil(items.length / 2), colW = [0, 0];
-    items.sort((a, b) => a.x - b.x).forEach((it, k) => { it.right = k >= half; colW[+it.right] = Math.max(colW[+it.right], it.p.tw); });
+    items.sort((a, b) => a.x - b.x).forEach((it, k) => { const sd = it.p.side || it.p.tallSide; it.right = sd ? sd > 0 : k >= half; colW[+it.right] = Math.max(colW[+it.right], it.p.tw); });
     items.forEach((it) => { it.lx = it.right ? w - padM - colW[1] - 0.8 * s : padM + colW[0] + 0.8 * s; it.ly = it.y; });
   }
   // keep callouts on the same side from stacking on top of each other
@@ -2086,7 +2276,7 @@ function renderShadow(S, eG) {
   const strength = mc.shadowK * S.hatch * (1 - 0.6 * eG);
   ground.visible = strength > 0.01 && S.reveal > 0;
   if (!ground.visible) return;
-  const cx = lerp(mc.fitA.c.x, mc.fitE.c.x, eG), cz = lerp(mc.fitA.c.z, mc.fitE.c.z, eG), hs = lerp(mc.fitA.raw, mc.fitE.raw, eG) * 1.12;
+  const fe = fitX(mc), cx = lerp(mc.fitA.c.x, fe.c.x, eG), cz = lerp(mc.fitA.c.z, fe.c.z, eG), hs = lerp(mc.fitA.raw, fe.raw, eG) * 1.12;
   shadowCam.left = -hs; shadowCam.right = hs; shadowCam.top = hs; shadowCam.bottom = -hs;
   shadowCam.position.set(cx, 60, cz); shadowCam.lookAt(cx, 0, cz); shadowCam.updateProjectionMatrix();
   ground.position.set(cx, mc.groundY - mc.groundDrop * eG, cz); ground.scale.set(2 * hs, 1, 2 * hs);
@@ -2108,6 +2298,7 @@ function render(S, quiet) {
     p.surf.visible = S.reveal > p.start + (p.end - p.start) * 0.45;
   });
   const wasEi = quiet ? null : mc.parts.map((p) => p.ei);
+  S.tall = page.portrait;
   pose(mc, S);
   renderShadow(S, eio(clamp(S.e)));
   placeCamera(S.az, S.el, S.tgt, S.dist);
@@ -2131,6 +2322,9 @@ function render(S, quiet) {
       if (mc.id === 'orni') {
         if (cross((x) => (x - Math.PI) / TAU)) Snd.whoosh(clamp(Math.abs(dph) * 60 / OMEGA0, 0.35, 1.5));   // peak downstroke speed
         if (cross((x) => x / (TAU / 8))) Snd.ratchet();
+      } else if (mc.id === 'screw') {
+        if (cross((x) => x / TAU)) Snd.whoosh(clamp(Math.abs(dph) * 60 / OMEGA0, 0.3, 1.2) * 0.7);          // the low edge of the cloth comes round
+        if (cross((x) => x / Math.PI + 0.5)) Snd.creak();
       } else {
         if (cross((x) => x / Math.PI + 0.5)) Snd.tick(Math.floor(S.phase / Math.PI + 0.5) & 1);              // the escapement lets one tooth go
         if (cross((x) => (x * CART_K * 1.05) / (TAU / 20))) Snd.tooth();                                    // one crown-gear peg passes
@@ -2141,8 +2335,8 @@ function render(S, quiet) {
 }
 function camFor(S) { // cinematic: camera straight from the timeline
   const eG = eio(clamp(S.e));
-  S.tgt = camTgt.copy(mc.fitA.c).lerp(mc.fitE.c, eG).lerp(LOOK, 0.55 * S.look);
-  S.dist = baseDist(lerp(mc.fitA.r, mc.fitE.r, eG)) * S.zoom * userZoom;
+  S.tgt = camTgt.copy(mc.fitA.c).lerp(fitX(mc).c, eG).lerp(LOOK, 0.55 * S.look);
+  S.dist = distFor(mc, eG, S.el) * S.zoom * userZoom;
   S.az += userAz; S.el = clamp(S.el + userEl, -0.2, 1.35);
   return S;
 }
@@ -2170,6 +2364,8 @@ function stepWorkbench(dt, now) {
     wb.phase += wb.omega * dt;
   }
   wb.e += (wb.eGoal - wb.e) * (1 - Math.exp(-dt * 8));
+  wb.lift += (ss(4.4, OMEGA_MAX, Math.abs(wb.omega)) * (1 - clamp(wb.e * 4)) - wb.lift) * (1 - Math.exp(-dt * 2.2));
+  wb.yaw += 0.3 * wb.omega * wb.lift * dt;
   // once the drawing is finished the divider slides a little each way by itself, to show what it is for
   if (wb.peekT !== null) {
     if (done.split || wb.style !== 'half') wb.peekT = null;
@@ -2191,12 +2387,12 @@ function stepWorkbench(dt, now) {
   if (!dragging) { wb.az += wb.azV * dt; wb.el = clamp(wb.el + wb.elV * dt, -0.2, 1.3); const f = Math.exp(-dt * 3.2); wb.azV *= f; wb.elV *= f; }
   if (wb.azTo !== null) { wb.az += (wb.azTo - wb.az) * (1 - Math.exp(-dt * 3.2)); if (Math.abs(wb.azTo - wb.az) < 0.003) wb.azTo = null; }
   else if (!reduceMotion && !wb.sel && !dragging && now - wb.lastTouch > 6000) wb.az += 0.085 * dt;
-  const tgtGoal = tmp2.copy(mc.fitA.c).lerp(mc.fitE.c, eG);
-  let distGoal = baseDist(lerp(mc.fitA.r, mc.fitE.r, eG), lerp(mc.spill || 1.13, 1.0, eG)) * wb.zoom;
+  const tgtGoal = tmp2.copy(mc.fitA.c).lerp(fitX(mc).c, eG);
+  let distGoal = distFor(mc, eG, wb.el, lerp(mc.spill || 1.13, 1.0, eG)) * wb.zoom;
   if (wb.sel && wb.selPart) {
     const p = wb.selPart;
     focusPt.copy(p.base).addScaledVector(p.off, p.ei).add(p.anchorV);
-    tgtGoal.lerp(focusPt, 0.72); distGoal *= 0.6;
+    tgtGoal.lerp(focusPt, 0.72); distGoal *= clamp(0.45 + 0.3 * (p.clear || 0), 0.6, 0.92);   // a part that sweeps a wide circle is looked at from further off
   }
   const k = wb.camInit ? 1 - Math.exp(-dt * 4) : 1; wb.camInit = true;
   wb.tgt.lerp(tgtGoal, k); wb.dist += (distGoal - wb.dist) * k;
@@ -2231,7 +2427,7 @@ function stepWorkbench(dt, now) {
     reveal: wb.revealT < 1 ? wb.revealT * mc.MAXT : 1e6, hatch: 1, solid: 1, splitX: wb.split,
     e: wb.e, phase: wb.phase, run: clamp(Math.abs(wb.omega) / 1.5), flow: clamp((wb.omega - 1.6) / 1.6),
     tick: clamp(1 - (Math.abs(wb.omega) - 4.5) / 3), time: now / 1000, mirror: 0,
-    labels: ss(0.55, 0.95, eG), notes: 0.3, focus: wb.focus, dim: wb.dim, look: 0,
+    labels: ss(0.55, 0.95, eG), notes: 0.3, focus: wb.focus, dim: wb.dim, look: 0, lift: wb.lift, yaw: wb.yaw,
     az: wb.az, el: wb.el, tgt: wb.tgt, dist: wb.dist,
   };
 }
@@ -2248,7 +2444,8 @@ function placeNote() {
     top = Math.max(page.st + 12, Math.min(Math.max(y + page.h * 0.085, page.st + (foot - page.st) * 0.6), floor - nh));
     nx = left + 16; ny = top - 5;
   } else {
-    const gap = Math.min(70, page.w * 0.07);
+    let gap = Math.min(70, page.w * 0.07);
+    if (wb.selPart.clear) gap = Math.max(gap, Math.abs(toScreen(tmp2.setFromMatrixColumn(camera.matrixWorld, 0).multiplyScalar(wb.selPart.clear).add(focusPt), page.w, page.h).x - x) + 14);
     const fitsL = x - gap - nw > page.sx + 12, fitsR = x + gap + nw < page.w - page.sx - 12;
     const right = x < page.w * 0.5 ? !fitsL : fitsR;
     left = clamp(right ? x + gap : x - gap - nw, page.sx + 12, page.w - page.sx - nw - 12);
@@ -2305,14 +2502,12 @@ function frame(now) {
 
 /* ---------- Switching ---------- */
 function press(sel, match) { document.querySelectorAll(sel).forEach((b) => b.setAttribute('aria-pressed', String(match(b)))); }
-let toastTimer = 0;
-function toast(msg) { toastEl.textContent = msg; toastEl.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('on'), 3400); }
 function swapMachine(id, redraw) {
   mc = MACHINES[id];
   Object.values(MACHINES).forEach((m) => { m.root.visible = m === mc; });
   $('tName').textContent = mc.name; $('tSub').textContent = mc.sub;
   select(null); wb.dim = 0; wb.focus = null; noteGeo.on = false; wb.camInit = false; wb.az = page.portrait && mc.azTall !== undefined ? mc.azTall : mc.az0; wb.azTo = null; wb.azV = wb.elV = 0;
-  hover.part = null; hover.a = 0;
+  hover.part = null; hover.a = 0; wb.lift = wb.yaw = 0;
   if (redraw) wb.revealT = 0;
   if (paperRT) resize();
 }
@@ -2545,11 +2740,6 @@ function setDrawer(open) { drawer.hidden = !open; recBtn.setAttribute('aria-pres
 recBtn.addEventListener('click', () => setDrawer(drawer.hidden));
 const sndBtn = $('sndBtn');
 sndBtn.addEventListener('click', () => { const on = Snd.toggle(); sndBtn.textContent = on ? 'Sound: on' : 'Sound: off'; sndBtn.setAttribute('aria-pressed', String(on)); if (on) Snd.brass(); });
-// The third leaf is not drawn yet. Nothing is counted here, so the page does not pretend to take a vote.
-$('vote').addEventListener('click', () => {
-  Snd.page();
-  toast('This leaf is still blank. If you want the Aerial Screw (Ms. B, f. 83v) drawn next, say so wherever you found this page.');
-});
 
 window.addEventListener('keydown', (ev) => {
   const inRange = ev.target instanceof HTMLInputElement;
@@ -2582,7 +2772,7 @@ const wantsMaker = (h) => h.get('maker') !== '0' && (h.get('maker') === '1' || [
 setMaker(wantsMaker(q));
 window.addEventListener('hashchange', () => { const h = new URLSearchParams(location.hash.slice(1)); if (h.has('maker')) setMaker(wantsMaker(h)); });
 if (['style', 'split', 'explode', 'auto', 'phase', 'az', 'nohint'].some((k) => q.get(k))) wb.peekT = null;   // a state asked for by address is left exactly as asked
-setMachine(q.get('m') === 'cart' ? 'cart' : 'orni', true, false);
+setMachine(q.get('m') in MACHINES ? q.get('m') : 'orni', true, false);
 if (q.get('ar')) { aspectMode = q.get('ar'); press('[data-ar]', (b) => b.dataset.ar === aspectMode); }
 if (q.get('clean')) document.body.classList.add('clean');
 if (q.get('style') in STYLE_X) { setStyle(q.get('style')); wb.split = wb.splitGoal; }
