@@ -140,6 +140,12 @@
     box-shadow: 30px 0 46px rgba(0, 0, 0, 0.55), 3px 0 0 rgba(70, 46, 18, 0.55);
   }
   #turn.go { transition: transform 0.85s cubic-bezier(0.5, 0, 0.75, 0.6); transform: translateX(-114%) rotate(-5deg); }
+  #turn { overflow: hidden; }
+  #turn canvas { position: absolute; display: none; }
+  /* the Short writes its own heading on each leaf, so the leaf's title and the caption line are not shown */
+  body.short #turn canvas { display: block; }
+  body.short .title h1, body.short .title p { visibility: hidden; }
+  body.short #cap { display: none; }
 
   /* ---------- Brass: old, handled metal. One procedural tile of mottling and scratches (--brassTex) lies over every piece;
      light comes from the upper left like the candle, so highlights sit top-left and shadows fall down and to the right ---------- */
@@ -489,7 +495,8 @@
     <button type="button" data-mode="cine" aria-pressed="false">Cinematic</button></div></div>
   <div class="row cine-only"><span>CUT</span><div class="seg" role="group" aria-label="Timeline preset">
     <button type="button" data-preset="story" aria-pressed="true">Full story · 20s</button>
-    <button type="button" data-preset="viral" aria-pressed="false">Viral cut · 15s</button></div>
+    <button type="button" data-preset="viral" aria-pressed="false">Viral cut · 15s</button>
+    <button type="button" data-preset="short" aria-pressed="false">Short · 13s</button></div>
     <button id="capBtn" type="button" aria-pressed="true">Captions</button></div>
   <div class="row"><span>FRAME</span><div class="seg" role="group" aria-label="Frame">
     <button type="button" data-ar="full" aria-pressed="true">Full</button>
@@ -699,6 +706,7 @@ const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').match
 const $ = (id) => document.getElementById(id);
 const stage = $('stage'), glCanvas = $('gl'), ov = $('ov'), capEl = $('cap'), noteEl = $('note');
 const octx = ov.getContext('2d');
+const shortOn = () => document.body.classList.contains('short');   // the Short is playing (cinematic mode, its own cut)
 
 const renderer = new THREE.WebGLRenderer({ canvas: glCanvas, antialias: true, preserveDrawingBuffer: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -2018,9 +2026,15 @@ function ballotDefs() {
 const balR = new THREE.Vector3(), balU = new THREE.Vector3();
 const balPx = { w: 1240, h: 800, free: 640, title: 110, lab: 96, foot: 34 };   // set on resize; lab is measured once the writing is laid out
 function ballotView() {
-  const L = balPx, row = camera.aspect >= 1.25, vt = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2), ys = [0, 0, 0];
+  const L = balPx, row = camera.aspect >= 1.25 && !shortOn(), vt = Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2), ys = [0, 0, 0];
   let ppu, spread = 1;
-  if (row) {
+  if (shortOn()) {
+    // the Short: one above the other, each over its name, all of it between 26 % and 73 % of the frame (a phone's buttons cover the rest)
+    const H = page.h, top = 0.26 * H, nameH = page.w * 0.044 * 1.3, gap = 0.014 * H, cyPx = page.st + page.cy * (H - page.st - page.sb - page.bh);
+    ppu = (0.73 * H - top - 3 * nameH - 2 * gap) / BAL.reduce((a, b) => a + b.top + b.bot, 0);
+    let y = top;
+    BAL.forEach((b, i) => { ys[i] = -(y + b.top * ppu - cyPx) / ppu; y += (b.top + b.bot) * ppu; SH.nameY[i] = y + nameH * 0.78; y += nameH + gap; });
+  } else if (row) {
     const tall = Math.max(...BAL.map((b) => b.top + b.bot)) + 0.15;
     ppu = Math.max(14, Math.min((L.free - L.lab - L.foot - 26) / tall, L.w / 12.5));
     const ground = -(tall * ppu + L.lab + L.foot) / 2 + tall * ppu - 0.15 * ppu;     // px below the middle of the free sheet
@@ -2145,7 +2159,7 @@ const allParts = Object.values(MACHINES).flatMap((m) => m.parts);
 let mc = MACHINES.orni;
 /* ---------- Procedural audio: no files, everything synthesised from noise and oscillators ---------- */
 const Snd = (() => {
-  let ctx = null, master = null, white = null, pink = null;
+  let ctx = null, master = null, comp = null, white = null, pink = null;
   const last = {};
   const api = { on: false };
   function noiseBuf(isPink) {
@@ -2163,7 +2177,7 @@ const Snd = (() => {
   function init() {
     ctx = new (window.AudioContext || window.webkitAudioContext)();
     master = ctx.createGain(); master.gain.value = 0;
-    const comp = ctx.createDynamicsCompressor();
+    comp = ctx.createDynamicsCompressor();
     master.connect(comp); comp.connect(ctx.destination);
     white = noiseBuf(false); pink = noiseBuf(true);
   }
@@ -2227,6 +2241,17 @@ const Snd = (() => {
   api.slide = () => { if (!ok('slide', 0.045)) return; burst(pink, 'bandpass', R(1500, 2600), 1.2, 0.07, 0.07, 0.01); };
   api.boom = () => { if (!ok('boom', 0.3)) return; tone('sine', 82, 38, 0.55, 0.85); burst(white, 'lowpass', 240, 3, 0.3, 0.6); burst(white, 'bandpass', 1100, 3, 0.08, 0.2, 0.002); };
   api.snap = () => { if (!ok('snap', 0.3)) return; tone('sine', 140, 60, 0.22, 0.7); burst(white, 'bandpass', 1500, 6, 0.06, 0.4, 0.001); burst(white, 'lowpass', 400, 5, 0.2, 0.5); };
+  // Recording only: everything that would reach the speakers is kept in memory instead (the speakers get silence), with one
+  // click laid on the recording alone at a known moment, so the recording can be lined up with the timeline to the sample.
+  api.now = () => (ctx ? ctx.currentTime : 0);
+  api.capture = (clickAt) => {
+    const sp = ctx.createScriptProcessor(4096, 2, 2), L = [], R = [];
+    sp.onaudioprocess = (ev) => { L.push(new Float32Array(ev.inputBuffer.getChannelData(0))); R.push(new Float32Array(ev.inputBuffer.getChannelData(1))); };
+    comp.disconnect(); comp.connect(sp); sp.connect(ctx.destination);
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.frequency.value = 3000; g.gain.value = 0.9;
+    o.connect(g); g.connect(sp); o.start(clickAt); o.stop(clickAt + 0.002);
+    return { rate: ctx.sampleRate, stop() { sp.disconnect(); comp.disconnect(); comp.connect(ctx.destination); return { L, R }; } };
+  };
   return api;
 })();
 const lineMats = allParts.map((p) => p.lineMat);
@@ -2318,6 +2343,63 @@ const PRESETS = {
     },
   },
 };
+// The Short (13.4 s, for a tall phone frame): four leaves, one change on each, and the leaves are turned by the timeline itself,
+// so the whole thing can be exported one frame at a time. The last turn uncovers the first leaf exactly as it was at 0 s.
+const SH = (() => {
+  const DUR = 13.4, TURN = 0.4, TURNS = [2.8, 6.4, 9.8, 13.0], LEAVES = ['orni', 'cart', 'screw', 'vote', 'orni'];
+  const leafAt = (T) => TURNS.filter((a) => T >= a).length;   // 4: the first leaf again, under the last turn
+  const turnAt = (T) => { for (let i = 0; i < 4; i++) if (T >= TURNS[i] && T < TURNS[i] + TURN) return { i, start: TURNS[i], u: (T - TURNS[i]) / TURN }; return null; };
+  // I · the flying machine. t runs from -0.4 (under the last turn) to 2.8. At t = 0 the wings are just short of the downstroke, so the first rush of air comes at 0.1 s.
+  const OW = 1.3 * TAU, OPH = Math.PI - 0.8;
+  function orni(t, S) {
+    const c = eio(clamp((t - 1.7) / 1.1));
+    S.phase = OPH + OW * t;
+    S.splitX = t < 0.3 ? 0.62 : lerp(0.62, -0.06, eio(clamp((t - 0.3) / 1.4)));
+    S.az = lerp(3.4, 3.95, c); S.el = lerp(0.9, 0.5, c); S.zoom = lerp(1.08, 0.92, c);
+  }
+  // II · the cart: ticking along half drawn, bursts apart, hangs there turning, snaps back together
+  function cart(T, S) {
+    let e = 0;
+    if (T >= 3.9 && T < 4.35) e = 1 - Math.pow(1 - (T - 3.9) / 0.45, 3);
+    else if (T >= 4.35 && T < 5.8) e = 1;
+    else if (T >= 5.8 && T < 6.2) e = 1 - Math.pow((T - 5.8) / 0.4, 2);
+    S.e = e; S.phase = 7 * (T - 2.8); S.labels = win(4.25, 4.65, 5.45, 5.8, T);
+    S.az = 0.75 + 0.12 * (T - 2.8); S.el = 0.42 + 0.08 * win(3.9, 4.6, 5.6, 6.2, T); S.zoom = lerp(1.13, 0.86, ss(3.9, 4.6, T) * (1 - ss(5.7, 6.2, T)));
+  }
+  // III · the screw: turns slowly, runs up to speed as the ink goes, and lifts off its shadow
+  const omega = (T) => lerp(2.4, 14, ss(7.2, 8.6, T)), rise = (T) => ss(8.6, 9.6, T);
+  const phI = integral(omega, DUR), yawI = integral((T) => 0.12 * omega(T) * rise(T), DUR);
+  let LIFT = 1;
+  function screw(T, S) {
+    S.phase = phI(T); S.flow = clamp((omega(T) - 1.6) / 1.6);
+    S.splitX = lerp(0.5, -0.06, eio(clamp((T - 7.2) / 1.4)));
+    S.lift = LIFT * rise(T); S.yaw = yawI(T); S.rise = 0.35; S.liftShadow = 1;
+    S.az = 0.62 + 0.1 * (T - 6.4); S.el = 0.5; S.zoom = 1.12;
+  }
+  // IV · the empty leaf: three sketches the pen is still finishing
+  function vote(T, S) {
+    S.reveal = MACHINES.vote.MAXT * lerp(0.35, 1, clamp((T - 9.8) / 1.6)); S.splitX = 1.06; S.run = S.flow = 0;
+    S.az = BALLOT_AZ; S.el = BALLOT_EL; S.zoom = 1;
+  }
+  function state(T) {
+    const leaf = leafAt(T);
+    const S = { reveal: 1e6, hatch: 1, solid: 1, splitX: 0.5, e: 0, phase: 0, run: 1, flow: 1, tick: 1, time: T * 15 / DUR,   // the candle's three flickers all repeat every 5 s: 15 s of them fit the loop exactly
+      mirror: 0, labels: 0, notes: 0.3, focus: null, dim: 0, look: 0, lift: 0, yaw: 0, rise: 0, liftShadow: 0 };
+    [orni, cart, screw, vote, (t, s) => orni(t - DUR, s)][leaf](T, S);
+    return S;
+  }
+  return {
+    DUR, LEAVES, leafAt, turnAt, state, snapKey: null, lastT: -1, nameY: [0, 0, 0],
+    setLift(hy) { LIFT = Math.max(1, 1.15 * (2 * hy / 3) / 0.34); },   // it rises at least a third of its own height
+    HOOK: ["Da Vinci's notebook,", 'but the drawings come to life.'],
+    ASK: ["Page IV isn't drawn yet.", 'Which one should I build?'],
+    SUB: { orni: 'I / IV · Flying Machine · c. 1488', cart: 'II / IV · Self-Driving Cart · c. 1478', screw: 'III / IV · “Helicopter” · c. 1489' },
+    NAMES: ['Giant Crossbow', 'Tank', 'Robot Knight'],
+  };
+})();
+SH.setLift(MACHINES.screw.fitA.hy);
+PRESETS.short = { dur: SH.DUR, leaves: true, captions: () => [], state: (T) => SH.state(T) };
+const SHORT_CY = { orni: 0.455, cart: 0.46, screw: 0.49 };   // where the middle of each machine sits, down the frame
 
 /* ---------- App state ---------- */
 const STYLE_X = { ink: 1.06, half: 0.5, solid: -0.06 };
@@ -2597,11 +2679,12 @@ function paint(S, mOf) {
     items.push({ p, i, a, x, y, right, lx: x + (right ? 1 : -1) * reach, ly: p.clear ? y : y + dy * 2.5 * s });
   });
   // a tall sheet is too narrow to label parts where they hang: the names go in two columns down the margins, as in a printed plate
-  const tall = page.portrait, top = page.st * dpr + 17 * s, foot = (page.h - page.sb) * dpr - 5 * s;
+  // (in the Short they keep under the heading, above the phone's caption area, and clear of its buttons down the right)
+  const sc = shortOn(), tall = page.portrait, top = Math.max(page.st * dpr + 17 * s, sc ? 0.235 * h : 0), foot = Math.min((page.h - page.sb) * dpr - 5 * s, sc ? 0.735 * h : Infinity);
   if (tall) {
-    const padM = page.sx * dpr + 3.2 * s, half = Math.ceil(items.length / 2), colW = [0, 0];
+    const padM = page.sx * dpr + 3.2 * s, padR = sc ? Math.max(padM, 0.15 * w) : padM, half = Math.ceil(items.length / 2), colW = [0, 0];
     items.sort((a, b) => a.x - b.x).forEach((it, k) => { const sd = it.p.side || it.p.tallSide; it.right = sd ? sd > 0 : k >= half; colW[+it.right] = Math.max(colW[+it.right], it.p.tw); });
-    items.forEach((it) => { it.lx = it.right ? w - padM - colW[1] - 0.8 * s : padM + colW[0] + 0.8 * s; it.ly = it.y; });
+    items.forEach((it) => { it.lx = it.right ? w - padR - colW[1] - 0.8 * s : padM + colW[0] + 0.8 * s; it.ly = it.y; });
   }
   // keep callouts on the same side from stacking on top of each other
   [true, false].forEach((side) => {
@@ -2681,7 +2764,7 @@ function resize() {
   ov.width = Math.round(w * dpr); ov.height = Math.round(h * dpr);
   camera.aspect = w / h;
   // the machine sits in the middle of the free sheet; on a tall sheet a little above it, leaving the foot for the notes and the mirror
-  page.cy = page.portrait && !mc.ballot ? 0.43 : 0.5;
+  page.cy = shortOn() ? (mc.ballot ? 0.5 : SHORT_CY[mc.id]) : page.portrait && !mc.ballot ? 0.43 : 0.5;
   if (full) camera.setViewOffset(w, h, 0, Math.round(h / 2 - (page.st + page.cy * (h - page.st - page.sb - page.bh))), w, h); else camera.clearViewOffset();
   camera.updateProjectionMatrix();
   bakePaper();
@@ -2712,14 +2795,15 @@ const prev = { reveal: 0, splitX: 0.5, phase: 0, e: 0, mc: null };
 let nextQuill = 0;
 const flicker = (t) => (reduceMotion ? 0.5 : 0.5 + 0.5 * (0.45 * Math.sin(TAU * 0.6 * t) + 0.3 * Math.sin(TAU * 1.4 * t + 1.3) + 0.25 * Math.sin(TAU * 2.2 * t + 4.1)));
 function renderShadow(S, eG) {
-  const strength = mc.shadowK * S.hatch * (1 - 0.6 * eG);
+  const up = S.liftShadow ? S.lift || 0 : 0;   // the Short lifts the screw well clear: its shadow stays on the paper, smaller, fainter and softer
+  const strength = mc.shadowK * S.hatch * (1 - 0.6 * eG) * (1 - 0.2 * clamp(up / 4));
   ground.visible = strength > 0.01 && S.reveal > 0;
   if (!ground.visible) return;
-  const fe = fitX(mc), cx = lerp(mc.fitA.c.x, fe.c.x, eG), cz = lerp(mc.fitA.c.z, fe.c.z, eG), hs = lerp(mc.fitA.raw, fe.raw, eG) * 1.12;
-  shadowCam.left = -hs; shadowCam.right = hs; shadowCam.top = hs; shadowCam.bottom = -hs;
+  const fe = fitX(mc), cx = lerp(mc.fitA.c.x, fe.c.x, eG), cz = lerp(mc.fitA.c.z, fe.c.z, eG), hs = lerp(mc.fitA.raw, fe.raw, eG) * 1.12, hc = hs * (1 + 0.06 * up);
+  shadowCam.left = -hc; shadowCam.right = hc; shadowCam.top = hc; shadowCam.bottom = -hc;
   shadowCam.position.set(cx, 60, cz); shadowCam.lookAt(cx, 0, cz); shadowCam.updateProjectionMatrix();
   ground.position.set(cx, mc.groundY - mc.groundDrop * eG, cz); ground.scale.set(2 * hs, 1, 2 * hs);
-  groundU.uStrength.value = strength; groundU.uBlur.value = mc.shadowBlur;
+  groundU.uStrength.value = strength; groundU.uBlur.value = mc.shadowBlur * (1 + 0.22 * up);
   scene.overrideMaterial = shadowMat;
   renderer.setRenderTarget(shadowRT); renderer.render(scene, shadowCam); renderer.setRenderTarget(null);
   scene.overrideMaterial = null;
@@ -2744,7 +2828,8 @@ function render(S, quiet) {
   renderer.render(scene, camera);
   if (mode === 'wb') placeNote();
   drawOverlay(S, m);
-  if (mc.ballot) placeBallot(S);
+  if (shortOn()) paintShort();
+  else if (mc.ballot) placeBallot(S);
   stepQuill(S);
 
   // sound, synced to what just happened on screen
@@ -2777,12 +2862,63 @@ function render(S, quiet) {
 function camFor(S) { // cinematic: camera straight from the timeline
   const eG = eio(clamp(S.e));
   S.tgt = camTgt.copy(mc.fitA.c).lerp(fitX(mc).c, eG).lerp(LOOK, 0.55 * S.look);
-  S.dist = distFor(mc, eG, S.el) * S.zoom * userZoom;
+  if (S.rise) S.tgt.y += 0.34 * S.lift * S.rise;   // the camera goes up a little way with a machine that lifts off
+  S.dist = (shortOn() ? distFor(mc, eG, S.el, lerp(mc.spill || 1.13, 1.0, eG)) : distFor(mc, eG, S.el)) * S.zoom * userZoom;   // the Short frames each machine as the workbench does
   S.az += userAz; S.el = clamp(S.el + userEl, -0.2, 1.35);
   return S;
 }
+// The Short: put the right leaf down, and while a leaf is being turned, lay the picture of it as it was at the start of the turn over the next one
+const turnEl = $('turn'), turnCv = document.createElement('canvas');
+turnEl.appendChild(turnCv);
+const showLeaf = (id) => { if (mc.id !== id) swapMachine(id, false); };
+function renderShort(quiet) {
+  const tn = SH.turnAt(T);
+  if (tn && SH.snapKey !== tn.start) {
+    SH.snapKey = tn.start;
+    showLeaf(SH.LEAVES[tn.i]);
+    render(camFor(SH.state(tn.start - 1e-4)), true);
+    const dpr = shared.uDpr.value, W = Math.round(page.w * dpr), H = Math.round(page.h * dpr);
+    if (turnCv.width !== W || turnCv.height !== H) { turnCv.width = W; turnCv.height = H; }
+    Object.assign(turnCv.style, { left: -page.sx + 'px', top: -page.st + 'px', width: page.w + 'px', height: page.h + 'px' });
+    const x = turnCv.getContext('2d'); x.clearRect(0, 0, W, H); x.drawImage(glCanvas, 0, 0, W, H); x.drawImage(ov, 0, 0, W, H);
+  }
+  if (!tn) SH.snapKey = null;
+  showLeaf(SH.LEAVES[SH.leafAt(T)]);
+  if (!quiet && tn && SH.lastT < tn.start && T - SH.lastT < 0.5) Snd.page();
+  render(camFor(SH.state(T)), quiet);
+  // lifted away to the left about its lower corner, slowly at first, as a hand turns a page
+  const e = tn ? tn.u * tn.u : 0;
+  turnEl.style.backgroundImage = ''; turnEl.classList.remove('go');
+  turnEl.style.visibility = tn ? 'visible' : 'hidden';
+  turnEl.style.transform = tn ? `translateX(${(-114 * e).toFixed(3)}%) rotate(${(-5 * e).toFixed(3)}deg)` : '';
+  capEl.style.opacity = 0;
+  SH.lastT = T;
+}
+// The heading of each leaf of the Short, written on the paper itself: it goes away with its leaf when the leaf is turned.
+// On the last leaf, the name of each sketch under it.
+function paintShort() {
+  const dpr = shared.uDpr.value, w = page.w, h = page.h, x = octx;
+  x.save(); x.setTransform(dpr, 0, 0, dpr, 0, 0);
+  x.textAlign = 'center'; x.textBaseline = 'alphabetic'; x.lineJoin = 'round';
+  const write = (txt, cx, y, font, fill, halo, spacing = 0) => {
+    x.font = font; x.letterSpacing = spacing + 'px';
+    x.filter = `blur(${(halo * 0.5).toFixed(2)}px)`; x.lineWidth = halo; x.strokeStyle = 'rgba(240,226,196,0.9)'; x.strokeText(txt, cx, y);
+    x.filter = 'none'; x.fillStyle = fill; x.fillText(txt, cx, y);
+  };
+  const red = 'rgba(140,59,34,0.97)';
+  if (!document.body.classList.contains('no-captions')) {
+    const fs = w * 0.0611, top = h * 0.112, lines = mc.ballot ? SH.ASK : SH.HOOK;
+    lines.forEach((t, i) => write(t, w / 2, top + fs * 0.72 + i * fs * 1.1, `${fs.toFixed(2)}px ${FONT_B}`, 'rgba(46,28,12,0.97)', fs * 0.34));
+    const sub = SH.SUB[mc.id];
+    if (sub) { const f2 = w * 0.0315; write(sub, w / 2, top + fs * 0.72 + fs * 1.1 + fs * 0.3 + h * 0.0104 + f2 * 0.75, `${f2.toFixed(2)}px ${FONT_D}`, red, f2 * 0.4, f2 * 0.13); }
+  }
+  if (mc.ballot) { const f3 = w * 0.044; SH.NAMES.forEach((t, i) => write(t, w / 2, SH.nameY[i], `${f3.toFixed(2)}px ${FONT_D}`, red, f3 * 0.4, f3 * 0.06)); }
+  x.letterSpacing = '0px';
+  x.restore();
+}
 function renderCine(quiet) {
   const P = PRESETS[preset];
+  if (P.leaves) { renderShort(quiet); return; }
   render(camFor(P.state(T, mc)), quiet);
   let html = '', op = 0;
   for (const c of P.captions(mc)) {
@@ -3035,7 +3171,9 @@ function penAt(t) {
   return { x: penV.x, y: penV.y, key: e };
 }
 function stepQuill(S) {
-  const now = performance.now(), dt = Math.min(0.05, (now - (quill.last || now)) / 1000); quill.last = now;
+  // in the Short the pen keeps the timeline's clock, not the wall clock, so frames exported one at a time come out as if played
+  const sc = shortOn(), now = sc ? T * 1000 : performance.now(), dt = clamp((now - (quill.last ?? now)) / 1000, 0, 0.05); quill.last = now;
+  if (sc && !mc.ballot) quill.w = 0;
   let tgt = null;
   if (quill.job) { tgt = quill.job(now); if (!tgt) quill.job = null; }
   if (!tgt && S.reveal > 0 && S.reveal < mc.MAXT) tgt = penAt(S.reveal);
@@ -3170,7 +3308,7 @@ function placeBallot() {
 /* ---------- Main loop ---------- */
 const scrub = $('scrub'), timeEl = $('time'), playBtn = $('play');
 let last = performance.now(), scrubbing = false, dragging = false;
-let frameErr = false;
+let frameErr = false, audioClock = null;
 function frame(now) {
   requestAnimationFrame(frame);   // asked for first: if anything below goes wrong, the page still moves on to the next frame
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
@@ -3179,7 +3317,8 @@ function frame(now) {
     if (mode === 'wb') render(stepWorkbench(dt, now), false);
     else {
       const dur = PRESETS[preset].dur;
-      if (playing) T = (T + dt) % dur;
+      if (audioClock) T = clamp(Snd.now() - audioClock.t0, 0, dur - 1e-6);   // recording the sound: the picture follows the audio clock, so a slow frame cannot pull them apart
+      else if (playing) T = (T + dt) % dur;
       renderCine(!playing);
       if (!scrubbing) scrub.value = Math.round((T / dur) * 1000);
       timeEl.textContent = T.toFixed(1) + 's';
@@ -3209,7 +3348,6 @@ function swapMachine(id, redraw) {
   if (redraw) wb.revealT = 0;
   if (paperRT) resize();
 }
-const turnEl = $('turn');
 let turnTimer = 0;
 // The leaf you were looking at, as a picture: what is on the two canvases plus the title, at screen resolution
 function snapshotLeaf() {
@@ -3222,7 +3360,7 @@ function snapshotLeaf() {
 }
 function setMachine(id, redraw = true, animate = true) {
   press('[data-m]', (b) => b.dataset.m === id);
-  if (mode === 'cine' && PRESETS[preset].machine && PRESETS[preset].machine !== id) setPreset('story');
+  if (mode === 'cine' && (PRESETS[preset].machine ? PRESETS[preset].machine !== id : PRESETS[preset].leaves)) setPreset('story');
   if (id === mc.id && paperRT) return;
   if (!animate || reduceMotion || !paperRT) { swapMachine(id, redraw); return; }
   // the old leaf is lifted away to the left; the next one is already underneath, being drawn
@@ -3234,8 +3372,15 @@ function setMachine(id, redraw = true, animate = true) {
   void turnEl.offsetWidth; turnEl.classList.add('go');
   turnTimer = setTimeout(() => { turnEl.classList.remove('go'); turnEl.style.visibility = 'hidden'; turnEl.style.backgroundImage = ''; }, 900);
 }
+// The Short turns its own leaves; leaving it puts the turning leaf and the hidden title back
+function markShort() {
+  const on = mode === 'cine' && preset === 'short', was = shortOn();
+  document.body.classList.toggle('short', on);
+  if (was && !on) { SH.snapKey = null; Object.assign(turnEl.style, { visibility: 'hidden', transform: '' }); if (mc.ballot) swapMachine('orni', false); }
+  if (on !== was && paperRT) resize();
+}
 function setMode(m) {
-  mode = m; document.body.dataset.mode = m;
+  mode = m; document.body.dataset.mode = m; markShort();
   press('button[data-mode]', (b) => b.dataset.mode === m);
   select(null); wb.dim = 0; wb.focus = null; noteGeo.on = false; hover.part = null; hover.a = 0;
   allParts.forEach((p) => { p.glowU.value = 0; p.lineMat.color.copy(C_INK); });
@@ -3245,7 +3390,7 @@ function setMode(m) {
   resize();
 }
 function setPreset(p) {
-  preset = p; T = 0;
+  preset = p; T = 0; markShort();
   press('[data-preset]', (b) => b.dataset.preset === p);
   if (PRESETS[p].machine && mc.id !== PRESETS[p].machine) setMachine(PRESETS[p].machine, false, false);
   setPlaying(true);
@@ -3487,7 +3632,8 @@ if (q.get('el')) wb.el = +q.get('el');
 if (q.get('zoom')) wb.zoom = +q.get('zoom');
 if (q.get('rec')) setDrawer(true);
 if (reduceMotion) { wb.revealT = 1; $('autoBtn').setAttribute('aria-pressed', 'false'); }
-if (q.get('mode') === 'cine') { if (q.get('preset') === 'viral') setPreset('viral'); setMode('cine'); } else resize();
+if (q.get('captions') === '0') document.body.classList.add('no-captions');
+if (q.get('mode') === 'cine') { if (q.get('preset') in PRESETS) setPreset(q.get('preset')); setMode('cine'); } else resize();
 if (q.get('t')) { T = +q.get('t'); setPlaying(false); wb.revealT = 1; }
 if (q.get('lens')) { const [fx, fy] = q.get('lens').split(',').map(Number); lens.x = fx * page.w; lens.y = fy * page.h; lens.home = false; }
 if (q.get('nohint')) ['split', 'lens', 'drive', 'explode', 'pick'].forEach(did);
@@ -3503,6 +3649,17 @@ setTimeout(() => { document.body.classList.add('hints'); if (!reduceMotion) lens
 setTimeout(() => document.body.classList.remove('hints'), lift + 24000);
 // test / recording hooks
 window.__seek = (t) => { T = t; setPlaying(false); if (mode === 'cine') renderCine(true); };
+// Recording the Short's sound: start a capture with a click at a known time, then play from 0 s on the audio clock after a lead-in
+window.__audioRec = {
+  warm() { if (!Snd.on) Snd.toggle(); return Snd.now(); },
+  now: () => Snd.now(),
+  start(lead = 8) {
+    if (!Snd.on) Snd.toggle();
+    const t0 = Snd.now() + lead, cap = Snd.capture(t0 - lead / 2);
+    T = 0; setPlaying(true); audioClock = { t0 };
+    return { t0, click: t0 - lead / 2, rate: cap.rate, done: () => { audioClock = null; setPlaying(false); return cap.stop(); } };
+  },
+};
 window.__codex = { wb, lens, page, done, setMaker, setAuto, setMode, setPreset, setMachine, setStyle, setExplode, setMirror, setDrawer, quill, ballot, castVote, select: (id) => select(mc.byId[id]), machines: MACHINES, renderer };
 document.fonts && document.fonts.ready.then(resize);
 $('loading').remove();
